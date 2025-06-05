@@ -1,5 +1,8 @@
 #include "gl_renderer.hpp"
 
+#include "utils/opengl/texture.hpp"
+#include "bindings.hpp"
+
 
 GLRenderer::GLRenderer(Window &window, Scene& scene) 
 {
@@ -7,22 +10,37 @@ GLRenderer::GLRenderer(Window &window, Scene& scene)
     height = window.GetHeight();
     output_texture = window.GetTexture();
 
-    glCreateTextures(GL_TEXTURE_2D, 1, &scene_depth_texture);
-    glActiveTexture(GL_TEXTURE0 + 2);
-    glTextureStorage2D(scene_depth_texture, 1, GL_DEPTH_COMPONENT32F, width, height);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    GL_CREATE_TEXTURE_2D(g_position_texture, GL_RGB32F, width, height);
+    glBindTextureUnit(TEXTURE_UNIT_POSITION, g_position_texture);
 
-    glCreateFramebuffers(1, &scene_framebuffer);
-    glNamedFramebufferTexture(scene_framebuffer, GL_COLOR_ATTACHMENT0, window.GetTexture(), 0);
-    glNamedFramebufferTexture(scene_framebuffer, GL_DEPTH_ATTACHMENT, scene_depth_texture, 0);
-    glCheckNamedFramebufferStatus(scene_framebuffer, GL_FRAMEBUFFER);
+    GL_CREATE_TEXTURE_2D(g_normal_texture, GL_RGB32F, width, height);
+    glBindTextureUnit(TEXTURE_UNIT_NORMAL, g_normal_texture);
+
+    GL_CREATE_TEXTURE_2D(g_depth_texture, GL_DEPTH_COMPONENT32F, width, height);
+    glBindTextureUnit(TEXTURE_UNIT_DEPTH, g_depth_texture);
+
+    glCreateFramebuffers(1, &g_framebuffer);
+    glNamedFramebufferTexture(g_framebuffer, GL_COLOR_ATTACHMENT0, g_position_texture, 0);
+    glNamedFramebufferTexture(g_framebuffer, GL_COLOR_ATTACHMENT1, g_normal_texture, 0);
+    glNamedFramebufferTexture(g_framebuffer, GL_DEPTH_ATTACHMENT, g_depth_texture, 0);
+    glCheckNamedFramebufferStatus(g_framebuffer, GL_FRAMEBUFFER);
+
+    GLenum draw_buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    glNamedFramebufferDrawBuffers(g_framebuffer, 2, draw_buffers);
+
+
+
+
+
+    glCreateFramebuffers(1, &deferred_framebuffer);
+    glNamedFramebufferTexture(deferred_framebuffer, GL_COLOR_ATTACHMENT0, window.GetTexture(), 0);
+    glCheckNamedFramebufferStatus(deferred_framebuffer, GL_FRAMEBUFFER);
 
     scene_buffer = std::make_unique<OpenGL::Buffer>(1000 * 1000 * 1000, GL_STATIC_DRAW);
-    scene_vao.SetVertexBufferAndLayout(*scene_buffer, {{GL_FLOAT, 3, false}, {GL_FLOAT, 3, false}});
-    scene_program = std::make_unique<OpenGL::Program>(SHADER_DIR + std::string("scene.vert"), SHADER_DIR + std::string("scene.frag"));
+    prepass_vao.SetVertexBufferAndLayout(*scene_buffer, {{GL_FLOAT, 3, false}, {GL_FLOAT, 3, false}});    
+    prepass_program = std::make_unique<OpenGL::Program>(SHADER_DIR + std::string("prepass.vert"), SHADER_DIR + std::string("prepass.frag"));
+
+    deferred_program = std::make_unique<OpenGL::Program>(SHADER_DIR + std::string("deferred.vert"), SHADER_DIR + std::string("deferred.frag"));
 
     auto& attrib = scene.GetAttrib();
     auto& shapes = scene.GetShapes();
@@ -48,13 +66,16 @@ GLRenderer::GLRenderer(Window &window, Scene& scene)
                     glm::vec3(vx, vy, vz), 
                     glm::vec3(0, 0, 0)
                 });
+
                 n_vertices++;
             }
 
-            glm::vec3 normal = glm::normalize(glm::cross(
+            glm::vec3 normal = glm::cross(
                 scene_buffer_cpu[n_vertices - 1].position - scene_buffer_cpu[n_vertices - 2].position,
                 scene_buffer_cpu[n_vertices - 3].position - scene_buffer_cpu[n_vertices - 2].position
-            ));
+            );
+
+            normal = normal / (glm::length(normal) + 1e-6f); // Avoid division by zero
 
             scene_buffer_cpu[n_vertices - 1].normal = normal;
             scene_buffer_cpu[n_vertices - 2].normal = normal;
@@ -71,30 +92,40 @@ GLRenderer::GLRenderer(Window &window, Scene& scene)
 
 GLRenderer::~GLRenderer() 
 {
-    glDeleteFramebuffers(1, &scene_framebuffer);   
-}    
+    glDeleteTextures(1, &g_position_texture);
+    glDeleteTextures(1, &g_normal_texture);
+    glDeleteTextures(1, &g_depth_texture);
+    glDeleteFramebuffers(1, &g_framebuffer);
+    glDeleteFramebuffers(1, &deferred_framebuffer);
+}
 
 void GLRenderer::Render(Camera &camera) 
 {
+    glm::mat4 view_matrix = camera.GetViewMatrix();
+    glm::mat4 projection_matrix = camera.GetProjectionMatrix();
+
     glEnable(GL_DEPTH_TEST);
-    // glDepthFunc(GL_GEQUAL);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);    
     glFrontFace(GL_CCW);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, scene_framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, g_framebuffer);
     glViewport(0, 0, width, height);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    // glClearDepth(0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    prepass_vao.Bind();
+    prepass_program->SetMat4("view", 1, view_matrix);
+    prepass_program->SetMat4("projection", 1, projection_matrix);
+    prepass_program->DrawArrays(GL_TRIANGLES, 0, n_vertices);
 
-    scene_vao.Bind();
 
-    glm::mat4 view_matrix = camera.GetViewMatrix();
-    glm::mat4 projection_matrix = camera.GetProjectionMatrix();
-    scene_program->SetMat4("view", 1, view_matrix);
-    scene_program->SetMat4("projection", 1, projection_matrix);
-    scene_program->SetVec3("camera_position", 1, camera.GetPosition());
-    scene_program->DrawArrays(GL_TRIANGLES, 0, n_vertices);
+    glBindFramebuffer(GL_FRAMEBUFFER, deferred_framebuffer);
+    glViewport(0, 0, width, height);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    deferred_vao.Bind();
+    deferred_program->SetVec3("camera_position", 1, camera.GetPosition());
+    deferred_program->DrawArrays(GL_TRIANGLES, 0, 3);
 }

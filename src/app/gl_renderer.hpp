@@ -24,10 +24,18 @@ class GLRenderer
         int height;
         GLuint output_texture;
 
-        GLuint scene_depth_texture;
-        GLuint scene_framebuffer;
+        GLuint g_position_texture;
+        GLuint g_normal_texture;
+        GLuint g_depth_texture;
+        GLuint g_framebuffer;
+
+        GLuint deferred_framebuffer;
         std::unique_ptr<OpenGL::Buffer> scene_buffer;
-        OpenGL::VertexArray scene_vao;
-        std::unique_ptr<OpenGL::Program> scene_program;
+        OpenGL::VertexArray prepass_vao;
+        OpenGL::VertexArray deferred_vao;
+        std::unique_ptr<OpenGL::Program> prepass_program;
+        std::unique_ptr<OpenGL::Program> deferred_program;
         int n_vertices = 0;
+
+
 };

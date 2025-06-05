@@ -94,6 +94,10 @@ class VertexArray
             glDeleteVertexArrays(1, &handle);
         }
 
+        VertexArray(const VertexArray&) = delete;
+        VertexArray& operator=(const VertexArray&) = delete;
+
+
         GLuint Handle()
         {
             return handle;

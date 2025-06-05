@@ -1,15 +1,24 @@
-layout(location = 0) in vec3 normal;
-layout(location = 1) in vec3 frag_pos;
+#include "bindings"
+
+
+layout(location = 0) in vec2 uv;
 
 layout (location = 0) out vec4 fragColor;
 
+layout(binding = TEXTURE_UNIT_POSITION) uniform sampler2D position_texture;
+layout(binding = TEXTURE_UNIT_NORMAL) uniform sampler2D normal_texture;
+
+
+
 vec3 lightVector = normalize(vec3(-1.0, -1.0, -1.0));
 vec3 lightColor = vec3(1.0, 1.0, 1.0); 
-
 uniform vec3 camera_position;
 
 void main() 
 {
+    vec3 frag_pos = texture(position_texture, uv).xyz;
+    vec3 normal = texture(normal_texture, uv).xyz;
+
     float ambientStrength = 0.5;
     vec3 ambient = ambientStrength * lightColor;
 
