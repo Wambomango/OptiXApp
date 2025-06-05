@@ -10,7 +10,8 @@
 #include <spdlog/fmt/ranges.h>
 
 
-#define SHADER_DIR "/home/mario/Desktop/Masterarbeit/OptiXApp/src/shader/"
+#define SHADER_DIR "/home/mario/OptiXApp/src/shader/"
+
 
 #define SHADERTYPESTRING(t) #t
 
@@ -336,7 +337,7 @@ class Program
             glProgramUniform1f(handle, glGetUniformLocation(handle, name.c_str()), value);
         }
 
-        void SetVec2(std::string name, GLsizei count, glm::vec2 &value)
+        void SetVec2(std::string name, GLsizei count, glm::vec2 value)
         {
             glProgramUniform2fv(handle, glGetUniformLocation(handle, name.c_str()), count, &value[0]);
         }
@@ -346,7 +347,7 @@ class Program
             glProgramUniform2f(handle, glGetUniformLocation(handle, name.c_str()), x, y);
         }
 
-        void SetVec3(std::string name, GLsizei count, glm::vec3 &value)
+        void SetVec3(std::string name, GLsizei count, glm::vec3 value)
         {
             glProgramUniform3fv(handle, glGetUniformLocation(handle, name.c_str()), count, &value[0]);
         }
@@ -356,7 +357,7 @@ class Program
             glProgramUniform3f(handle, glGetUniformLocation(handle, name.c_str()), x, y, z);
         }
 
-        void SetVec4(std::string name, GLsizei count, glm::vec4 &value)
+        void SetVec4(std::string name, GLsizei count, glm::vec4 value)
         {
             glProgramUniform4fv(handle, glGetUniformLocation(handle, name.c_str()), count, &value[0]);
         }
@@ -366,7 +367,7 @@ class Program
             glProgramUniform4f(handle, glGetUniformLocation(handle, name.c_str()), x, y, z, w);
         }
 
-        void SetIntegerVec2(std::string name, GLsizei count, glm::ivec2 &value)
+        void SetIntegerVec2(std::string name, GLsizei count, glm::ivec2 value)
         {
             glProgramUniform2iv(handle, glGetUniformLocation(handle, name.c_str()), count, &value[0]);
         }
@@ -376,7 +377,7 @@ class Program
             glProgramUniform2i(handle, glGetUniformLocation(handle, name.c_str()), x, y);
         }
 
-        void SetIntegerVec3(std::string name, GLsizei count, glm::ivec3 &value)
+        void SetIntegerVec3(std::string name, GLsizei count, glm::ivec3 value)
         {
             glProgramUniform3iv(handle, glGetUniformLocation(handle, name.c_str()), count, &value[0]);
         }
@@ -386,7 +387,7 @@ class Program
             glProgramUniform3i(handle, glGetUniformLocation(handle, name.c_str()), x, y, z);
         }
 
-        void SetIntegerVec4(std::string name, GLsizei count, glm::ivec4 &value)
+        void SetIntegerVec4(std::string name, GLsizei count, glm::ivec4 value)
         {
             glProgramUniform4iv(handle, glGetUniformLocation(handle, name.c_str()), count, &value[0]);
         }
@@ -396,17 +397,17 @@ class Program
             glProgramUniform4i(handle, glGetUniformLocation(handle, name.c_str()), x, y, z, w);
         }
 
-        void SetMat2(std::string name, GLsizei count, glm::mat2 &mat)
+        void SetMat2(std::string name, GLsizei count, glm::mat2 mat)
         {
             glProgramUniformMatrix2fv(handle, glGetUniformLocation(handle, name.c_str()), count, GL_FALSE, &mat[0][0]);
         }
 
-        void SetMat3(std::string name, GLsizei count, glm::mat3 &mat)
+        void SetMat3(std::string name, GLsizei count, glm::mat3 mat)
         {
             glProgramUniformMatrix3fv(handle, glGetUniformLocation(handle, name.c_str()), count, GL_FALSE, &mat[0][0]);
         }
 
-        void SetMat4(std::string name, GLsizei count, glm::mat4 &mat)
+        void SetMat4(std::string name, GLsizei count, glm::mat4 mat)
         {
             glProgramUniformMatrix4fv(handle, glGetUniformLocation(handle, name.c_str()), count, GL_FALSE, &mat[0][0]);
         }

@@ -95,6 +95,6 @@ void GLRenderer::Render(Camera &camera)
     glm::mat4 projection_matrix = camera.GetProjectionMatrix();
     scene_program->SetMat4("view", 1, view_matrix);
     scene_program->SetMat4("projection", 1, projection_matrix);
-    scene_program->SetVec3("camera_position", camera.GetPosition());
+    scene_program->SetVec3("camera_position", 1, camera.GetPosition());
     scene_program->DrawArrays(GL_TRIANGLES, 0, n_vertices);
 }

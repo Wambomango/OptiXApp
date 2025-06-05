@@ -35,6 +35,14 @@ class Camera
             this->orientation = orientation;
             UpdateViewMatrix();
         }
+        glm::vec3 GetPosition()
+        {
+            return this->position;
+        }
+        glm::vec3 GetOrientation()
+        {
+            return this->orientation;
+        }
         glm::mat4 GetViewMatrix() const
         {
             return view_matrix;

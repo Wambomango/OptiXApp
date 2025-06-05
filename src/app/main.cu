@@ -11,8 +11,6 @@
 #include "gl_renderer.hpp"
 #include "optix_renderer.hpp"
 
-#include <glm/gtx/string_cast.hpp>
-
 int main(int arg, char **argv)
 {
     size_t width = 1024;
@@ -21,7 +19,7 @@ int main(int arg, char **argv)
     Camera camera(45.0f, float(width) / float(height), 0.1f, 100.0f);
     camera.SetCallbacks(window);
 
-    Scene scene("/home/mario/Desktop/Masterarbeit/OptiXApp/scenes/trees/Tree1.obj");
+    Scene scene("/home/mario/OptiXApp/scenes/trees/Tree1.obj");
 
     GLRenderer gl_renderer(window, scene);
     OptiXRenderer optix_renderer(window, scene);
