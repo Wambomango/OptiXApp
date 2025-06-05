@@ -10,7 +10,7 @@ GLRenderer::GLRenderer(Window &window, Scene& scene)
     height = window.GetHeight();
     output_texture = window.GetTexture();
 
-    GL_CREATE_TEXTURE_2D(g_position_texture, GL_RGB32F, width, height);
+    GL_CREATE_TEXTURE_2D(g_position_texture, GL_RGBA32F, width, height);
     glBindTextureUnit(TEXTURE_UNIT_POSITION, g_position_texture);
 
     GL_CREATE_TEXTURE_2D(g_normal_texture, GL_RGB32F, width, height);
@@ -111,7 +111,7 @@ void GLRenderer::Render(Camera &camera)
 
     glBindFramebuffer(GL_FRAMEBUFFER, g_framebuffer);
     glViewport(0, 0, width, height);
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     prepass_vao.Bind();

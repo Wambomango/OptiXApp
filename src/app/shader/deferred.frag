@@ -16,8 +16,13 @@ uniform vec3 camera_position;
 
 void main() 
 {
-    vec3 frag_pos = texture(position_texture, uv).xyz;
+    vec4 frag_pos = texture(position_texture, uv);
     vec3 normal = texture(normal_texture, uv).xyz;
+
+    if(frag_pos.w == 0.0) 
+    {
+        discard;
+    }
 
     float ambientStrength = 0.5;
     vec3 ambient = ambientStrength * lightColor;
@@ -26,7 +31,7 @@ void main()
     vec3 diffuse = diff * lightColor;
 
     float specularStrength = 0.5;
-    vec3 viewDir = normalize(camera_position - frag_pos);
+    vec3 viewDir = normalize(camera_position - frag_pos.xyz);
     vec3 reflectDir = reflect(-lightVector, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = specularStrength * spec * lightColor;
