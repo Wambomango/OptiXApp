@@ -10,9 +10,6 @@
 #include <spdlog/fmt/ranges.h>
 
 
-#define SHADER_DIR "/home/mario/OptiXApp/src/shader/"
-
-
 #define SHADERTYPESTRING(t) #t
 
 namespace OpenGL

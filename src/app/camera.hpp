@@ -17,6 +17,51 @@ class Camera
             UpdateProjectionMatrix();
         }
 
+        void Tick(float dt)
+        {
+            float speed = fast ? 20.0f : 5.0f; // Speed of the camera movement
+            glm::vec3 forward = glm::normalize(glm::vec3(
+                glm::sin(glm::radians(orientation.x)),
+                0.0f,
+                -glm::cos(glm::radians(orientation.x))
+            ));
+            glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+            glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+            if (moving_forward)
+            {
+                position += speed * dt * forward;
+            }
+
+            if (moving_backward)
+            {
+                position -= speed * dt * forward;
+            }
+
+            if (moving_right)
+            {
+                position += speed * dt * right;
+            }
+ 
+            if (moving_left)
+            {
+                position -= speed * dt * right;
+            }
+
+            if (moving_up)
+            {
+                position += speed * dt * up;
+            }
+
+            if (moving_down)
+            {
+                position -= speed * dt * up;
+            }
+
+            UpdateViewMatrix();
+        }
+ 
+
         void SetCallbacks(Window& window)
         {
             window.SetScrollCallback(std::bind(&Camera::OnScroll, this, std::placeholders::_1, std::placeholders::_2));
@@ -89,42 +134,60 @@ class Camera
         }
     
         void OnKey(int key, int scancode, int action, int mods)
-        {
-            float sensitivity = 0.1f; 
-            
-            glm::vec3 forward = glm::normalize(glm::vec3(
-                glm::sin(glm::radians(orientation.x)),
-                0.0f,
-                -glm::cos(glm::radians(orientation.x))
-            ));
-            glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
-            glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-
-            if (action == GLFW_PRESS || action == GLFW_REPEAT)
+        {            
+            if (action == GLFW_PRESS)
             {
                 switch (key)
                 {
                     case GLFW_KEY_W:
-                        position += sensitivity * forward ;
+                        moving_forward = true;
                         break;
                     case GLFW_KEY_S:
-                        position -= sensitivity * forward;
+                        moving_backward = true;
                         break;
                     case GLFW_KEY_D:
-                        position += sensitivity * right;
+                        moving_right = true;
                         break;
                     case GLFW_KEY_A:
-                        position -= sensitivity * right;     
+                        moving_left = true;
                         break;
-                    case GLFW_KEY_E:
-                        position += sensitivity * up;
+                    case GLFW_KEY_SPACE:
+                        moving_up = true;
                         break;
-                    case GLFW_KEY_Q:
-                        position -= sensitivity * up;
+                    case GLFW_KEY_LEFT_SHIFT:
+                        moving_down = true;
+                        break;
+                    case GLFW_KEY_LEFT_CONTROL:
+                        fast = true;
                         break;
                 }
-
-                UpdateViewMatrix();
+            }
+            else if (action == GLFW_RELEASE)
+            {
+                switch (key)
+                {
+                    case GLFW_KEY_W:
+                        moving_forward = false;
+                        break;
+                    case GLFW_KEY_S:
+                        moving_backward = false;
+                        break;
+                    case GLFW_KEY_D:
+                        moving_right = false;
+                        break;
+                    case GLFW_KEY_A:
+                        moving_left = false;
+                        break;
+                    case GLFW_KEY_SPACE:
+                        moving_up = false;
+                        break;
+                    case GLFW_KEY_LEFT_SHIFT:
+                        moving_down = false;
+                        break;
+                    case GLFW_KEY_LEFT_CONTROL:
+                        fast = false;
+                        break;
+                }
             }
         }
 
@@ -136,4 +199,13 @@ class Camera
         glm::vec3 orientation = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::mat4 view_matrix = glm::mat4(1.0f);
         glm::mat4 projection_matrix = glm::mat4(1.0f);
+
+
+        bool moving_forward = false;
+        bool moving_backward = false;
+        bool moving_left = false;
+        bool moving_right = false;
+        bool moving_up = false;
+        bool moving_down = false;
+        bool fast = false;
 };

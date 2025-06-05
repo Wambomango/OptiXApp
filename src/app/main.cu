@@ -19,13 +19,19 @@ int main(int arg, char **argv)
     Camera camera(45.0f, float(width) / float(height), 0.1f, 100.0f);
     camera.SetCallbacks(window);
 
-    Scene scene("/home/mario/OptiXApp/scenes/trees/Tree1.obj");
+    Scene scene("/home/mario/Desktop/Masterarbeit/OptiXApp/scenes/trees/Tree1.obj");
 
     GLRenderer gl_renderer(window, scene);
     OptiXRenderer optix_renderer(window, scene);
 
+    float last_time = window.GetTime();
     while (!window.ShouldClose())
     {
+        float time = window.GetTime();
+        float dt = time - last_time;
+        last_time = time;
+        camera.Tick(dt);
+
         gl_renderer.Render(camera);
         window.Render();
 

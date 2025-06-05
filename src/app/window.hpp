@@ -35,6 +35,11 @@ class Window
             glDeleteTextures(1, &gl_texture);
         }
 
+        float GetTime()
+        {
+            return static_cast<float>(glfwGetTime());
+        }
+
         void SetScrollCallback(std::function<void(double, double)> callback)
         {
             scroll_callback = callback;
