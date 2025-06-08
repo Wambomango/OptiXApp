@@ -12,5 +12,5 @@ void main()
     frag_pos_ = position;
     normal_ = normal;
 
-    gl_Position = projection * view * vec4(position, 1.0);
+    gl_Position = projection * view * vec4(frag_pos_, 1.0);
 }

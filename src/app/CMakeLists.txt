@@ -19,6 +19,7 @@ SET(SHADER_DIR ${APP_DIR}/shader)
 add_executable(OptiXApp main.cu
                         window.cpp
                         gl_renderer.cpp
+                        ssao.cpp
                         optix_renderer.cu)
 
 target_compile_definitions(OptiXApp PUBLIC SHADER_DIR="${SHADER_DIR}/")

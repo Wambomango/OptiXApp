@@ -16,7 +16,7 @@ int main(int arg, char **argv)
     size_t width = 1024;
     size_t height = 1024;
     Window window(width, height, "OptiX App");
-    Camera camera(45.0f, float(width) / float(height), 0.1f, 100.0f);
+    Camera camera(45.0f, float(width) / float(height), 0.1f, 200.0f);
     camera.SetCallbacks(window);
 
     Scene scene("/home/mario/Desktop/Masterarbeit/OptiXApp/scenes/trees/Tree1.obj");

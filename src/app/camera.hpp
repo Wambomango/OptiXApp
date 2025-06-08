@@ -96,6 +96,14 @@ class Camera
         {
             return projection_matrix;
         }
+        float GetNearPlane()
+        {
+            return near_plane;
+        }
+        float GetFarPlane()
+        {
+            return far_plane;
+        }
         void UpdateProjectionMatrix()
         {
             projection_matrix = glm::perspective(glm::radians(fov), aspect_ratio, near_plane, far_plane);

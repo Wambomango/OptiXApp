@@ -3,6 +3,7 @@
 #include "scene.hpp"
 #include "window.hpp"
 #include "camera.hpp"
+#include "ssao.hpp"
 
 #include "utils/opengl/shader.hpp"
 #include "utils/opengl/vertex_array.hpp"
@@ -37,5 +38,5 @@ class GLRenderer
         std::unique_ptr<OpenGL::Program> deferred_program;
         int n_vertices = 0;
 
-
+        SSAO ssao;
 };

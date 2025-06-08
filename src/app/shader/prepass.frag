@@ -7,7 +7,7 @@ layout (location = 1) out vec3 normal_;
 
 void main() 
 {
-    frag_pos_ = vec4(frag_pos, 1);
+    frag_pos_ = vec4(frag_pos, 1.0);
     normal_ = normal;
 }
 

@@ -4,7 +4,7 @@
 #include "bindings.hpp"
 
 
-GLRenderer::GLRenderer(Window &window, Scene& scene) 
+GLRenderer::GLRenderer(Window &window, Scene& scene) : ssao(window.GetWidth(), window.GetHeight())
 {
     width = window.GetWidth();
     height = window.GetHeight();
@@ -27,9 +27,6 @@ GLRenderer::GLRenderer(Window &window, Scene& scene)
 
     GLenum draw_buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
     glNamedFramebufferDrawBuffers(g_framebuffer, 2, draw_buffers);
-
-
-
 
 
     glCreateFramebuffers(1, &deferred_framebuffer);
@@ -101,8 +98,8 @@ GLRenderer::~GLRenderer()
 
 void GLRenderer::Render(Camera &camera) 
 {
-    glm::mat4 view_matrix = camera.GetViewMatrix();
-    glm::mat4 projection_matrix = camera.GetProjectionMatrix();
+    glm::vec3 light_direction = glm::normalize(glm::vec3(0.0, -1.0, 0.0));
+    glm::vec3 light_color = glm::vec3(0.8f, 0.8f, 0.8f);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -115,17 +112,20 @@ void GLRenderer::Render(Camera &camera)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     prepass_vao.Bind();
-    prepass_program->SetMat4("view", 1, view_matrix);
-    prepass_program->SetMat4("projection", 1, projection_matrix);
+    prepass_program->SetMat4("view", 1, camera.GetViewMatrix());
+    prepass_program->SetMat4("projection", 1, camera.GetProjectionMatrix());
     prepass_program->DrawArrays(GL_TRIANGLES, 0, n_vertices);
 
+    ssao.CalculateSSAO(camera);    
 
     glBindFramebuffer(GL_FRAMEBUFFER, deferred_framebuffer);
     glViewport(0, 0, width, height);
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0.8f, 0.9f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     deferred_vao.Bind();
+    deferred_program->SetVec3("light_direction", 1, light_direction);
+    deferred_program->SetVec3("light_color", 1, light_color);
     deferred_program->SetVec3("camera_position", 1, camera.GetPosition());
     deferred_program->DrawArrays(GL_TRIANGLES, 0, 3);
 }
