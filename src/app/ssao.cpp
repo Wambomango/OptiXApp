@@ -1,6 +1,8 @@
 #include "ssao.hpp"
 
-#define N_SAMPLES 1000000
+#include <random>
+
+#define N_SAMPLES 999983
 
 SSAO::SSAO(int width, int height) : width(width), height(height)
 {
@@ -27,33 +29,42 @@ SSAO::SSAO(int width, int height) : width(width), height(height)
     ssao_blur_program->SetInt("width", width);
     ssao_blur_program->SetInt("height", height);
 
-    samples = std::make_unique<OpenGL::Buffer>(N_SAMPLES * sizeof(glm::vec4), GL_STATIC_DRAW);
-    std::vector<glm::vec4> samples_cpu(N_SAMPLES);
+    samples = std::make_unique<OpenGL::Buffer>(N_SAMPLES * 3 * sizeof(float), GL_STATIC_DRAW);
+    std::vector<float> samples_cpu(N_SAMPLES * 3);
+
+    std::default_random_engine generator;
+    std::normal_distribution<double> distribution(0.0, 1.0);
 
     for(int i = 0; i < N_SAMPLES; i++) 
     {
-        glm::vec4 sample;
+        glm::vec3 sample;
         while(true)
         {
-            sample.x = (static_cast<float>(rand()) / RAND_MAX) * 2.0f - 1.0f;
-            sample.y = (static_cast<float>(rand()) / RAND_MAX) * 2.0f - 1.0f;
-            sample.z = (static_cast<float>(rand()) / RAND_MAX) * 2.0f - 1.0f;
+            sample.x = distribution(generator);
+            sample.y = distribution(generator);
+            sample.z = distribution(generator);
+
             if(glm::length(sample) < 1.0f) 
             {
                 break;
             }
         }
 
-        samples_cpu[i] = sample;
+        samples_cpu[i * 3 + 0] = sample.x;
+        samples_cpu[i * 3 + 1] = sample.y;
+        samples_cpu[i * 3 + 2] = sample.z;
     }
 
-    samples->Store(samples_cpu.data(), N_SAMPLES * sizeof(glm::vec4));    
+    samples->Store(samples_cpu.data(), N_SAMPLES * 3 * sizeof(float));    
     samples->BindRange(SSBO_SAMPLES);
 }
 
 
 SSAO::~SSAO()
 {
+    ssao_program.release();
+    ssao_blur_program.release();
+
     glDeleteTextures(1, &ssao_raw_texture);
     glDeleteTextures(1, &ssao_texture);
     glDeleteFramebuffers(1, &ssao_raw_framebuffer);

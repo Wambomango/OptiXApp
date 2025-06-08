@@ -19,7 +19,7 @@ uniform float far_plane;
 
 layout(binding = SSBO_SAMPLES, std430) buffer ssbo_samples
 {
-    vec4 samples[];
+    float samples[];
 };
 
 const int N_SAMPLES = 256;
@@ -40,9 +40,9 @@ void main()
         discard;
     }
 
-    int offset = int((uv.x * width * height + uv.y * height) * N_SAMPLES) % n_samples;
+    int offset = int((uv.x * width * height + uv.y * height)) % (3 * n_samples);
 
-    vec3 randomVec = normalize(samples[offset].xyz);
+    vec3 randomVec = normalize(vec3(samples[offset + 0], samples[offset + 1], samples[offset + 2]));
     vec3 tangent   = normalize(randomVec - normal * dot(randomVec, normal));
     vec3 bitangent = cross(normal, tangent);
     mat3 TBN = mat3(tangent, bitangent, normal);  
@@ -51,7 +51,7 @@ void main()
     float occlusion = 0.0;
     for(int i = 0; i < N_SAMPLES; i++)
     {
-        vec3 s = samples[offset + i].xyz;
+        vec3 s = vec3(samples[offset + i * 3 + 0], samples[offset + i * 3 + 1], samples[offset + i * 3 + 2]);
         s.z = abs(s.z);
 
         vec3 world_coordinates = position.xyz + TBN * s * radius;
@@ -70,7 +70,7 @@ void main()
         float image_depth_l = linearize_depth(image_depth, near_plane, far_plane);
         float sample_depth_l = linearize_depth(sample_depth, near_plane, far_plane);
 
-        if(image_depth_l <= sample_depth_l)
+        if(image_depth_l <= sample_depth_l + 0.0025)
         {   
             occlusion += smoothstep(0.0, 1.0, radius / abs(image_depth_l - sample_depth_l));
         }

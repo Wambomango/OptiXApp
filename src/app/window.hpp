@@ -6,7 +6,7 @@
 #include "utils/opengl/vertex_array.hpp"
 #include "utils/opengl/texture.hpp"
 
-
+#include <map>
 #include <string>
 
 #include "bindings.hpp"
@@ -18,10 +18,14 @@ class Window
         Window(int width, int height, std::string titel);
         ~Window();
         float GetTime();
-        void SetScrollCallback(std::function<void(double, double)> callback);
-        void SetMouseMoveCallback(std::function<void(double, double)> callback);
-        void SetMouseButtonCallback(std::function<void(int, int, int)> callback);
-        void SetKeyCallback(std::function<void(int, int, int, int)> callback);
+        int AddScrollCallback(std::function<void(double, double)> callback);
+        int AddMouseMoveCallback(std::function<void(double, double)> callback);
+        int AddMouseButtonCallback(std::function<void(int, int, int)> callback);
+        int AddKeyCallback(std::function<void(int, int, int, int)> callback);
+        bool RemoveScrollCallback(int key);
+        bool RemoveMouseMoveCallback(int key);
+        bool RemoveMouseButtonCallback(int key);
+        bool RemoveKeyCallback(int key);
         GLuint GetTexture();
         int GetWidth();
         int GetHeight();
@@ -33,6 +37,11 @@ class Window
 
 
     private:
+        static void ScrollDispatcher(GLFWwindow* window, double xoffset, double yoffset);
+        static void MouseMoveDispatcher(GLFWwindow* window, double xpos, double ypos);
+        static void MouseButtonDispatcher(GLFWwindow* window, int button, int action, int mods);
+        static void KeyDispatcher(GLFWwindow* window, int key, int scancode, int action, int mods);
+
         OpenGL::ContextGLFW context;
         int width;
         int height;
@@ -43,10 +52,10 @@ class Window
 
         GLuint output_texture;
 
-        std::function<void(double, double)> scroll_callback = nullptr;
-        std::function<void(double, double)> mouse_move_callback = nullptr;
-        std::function<void(int, int, int)> mouse_button_callback = nullptr;
-        std::function<void(int, int, int, int)> key_callback = nullptr;
+        std::map<int, std::function<void(double, double)>> scroll_callbacks;
+        std::map<int, std::function<void(double, double)>> mouse_move_callbacks;
+        std::map<int, std::function<void(int, int, int)>> mouse_button_callbacks;
+        std::map<int, std::function<void(int, int, int, int)>> key_callbacks;
 };
 
 

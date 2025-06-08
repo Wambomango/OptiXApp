@@ -89,6 +89,8 @@ GLRenderer::GLRenderer(Window &window, Scene& scene) : ssao(window.GetWidth(), w
 
 GLRenderer::~GLRenderer() 
 {
+    prepass_program.release();
+    deferred_program.release();
     glDeleteTextures(1, &g_position_texture);
     glDeleteTextures(1, &g_normal_texture);
     glDeleteTextures(1, &g_depth_texture);

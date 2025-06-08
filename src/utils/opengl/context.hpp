@@ -159,7 +159,6 @@ class ContextGLFW : public Context
             }
             glfwMakeContextCurrent(NULL);
 
-
             n_contexts++;
             SPDLOG_DEBUG("initialized");
         }
