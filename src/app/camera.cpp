@@ -113,7 +113,7 @@ float Camera::GetAspectRatio()
 void Camera::OnScroll(double xoffset, double yoffset)
 {
     fov -= static_cast<float>(yoffset);
-    fov = glm::clamp(fov, 1.0f, 45.0f); 
+    fov = glm::clamp(fov, 1.0f, 90.0f); 
     UpdateProjectionMatrix();
 }
 

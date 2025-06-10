@@ -104,10 +104,6 @@ void GLRenderer::Render(Camera &camera)
     glm::vec3 light_color = glm::vec3(0.8f, 0.8f, 0.8f);
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);    
-    glFrontFace(GL_CCW);
-
     glBindFramebuffer(GL_FRAMEBUFFER, g_framebuffer);
     glViewport(0, 0, width, height);
     glClearColor(0, 0, 0, 0);
@@ -122,7 +118,7 @@ void GLRenderer::Render(Camera &camera)
 
     glBindFramebuffer(GL_FRAMEBUFFER, deferred_framebuffer);
     glViewport(0, 0, width, height);
-    glClearColor(0.8f, 0.9f, 1.0f, 1.0f);
+    glClearColor(pow(0.5f, 1.0f / 2.2f), pow(0.6f, 1.0f / 2.2f), pow(0.9f, 1.0f / 2.2f), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     deferred_vao.Bind();

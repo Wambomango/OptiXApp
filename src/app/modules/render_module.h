@@ -31,7 +31,7 @@
 
 struct Params
 {
-    unsigned int *image;
+    uchar4 *image;
     unsigned int image_width;
     unsigned int image_height;
     float3 camera_position;
@@ -39,6 +39,8 @@ struct Params
     float3 camera_v;
     float3 camera_w;
     OptixTraversableHandle handle;
+    float3 light_direction;
+    float3 light_color; 
 };
 
 struct RayGenData

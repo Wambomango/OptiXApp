@@ -29,7 +29,7 @@ int main(int arg, char **argv)
     GLRenderer gl_renderer(window, scene);
     OptiXRenderer optix_renderer(window, scene);
 
-    Camera camera(45.0f, float(width) / float(height), 0.1f, 200.0f);
+    Camera camera(90.0f, float(width) / float(height), 0.1f, 10000.0f);
     camera.AddCallbacks(window);
 
     bool use_optix = false;

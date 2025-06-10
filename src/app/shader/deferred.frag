@@ -16,14 +16,13 @@ uniform vec3 camera_position;
 void main() 
 {
     vec4 frag_pos = texture(position_texture, uv);
-    vec3 normal = texture(normal_texture, uv).xyz;
+    vec3 normal = normalize(texture(normal_texture, uv).xyz);
     float ssao = texture(ssao_texture, uv).x;
 
     if(frag_pos.w == 0.0) 
     {
         discard;
     }
-
 
 
     float ambientStrength = 0.5;
@@ -33,7 +32,6 @@ void main()
     vec3 diffuse = diff * light_color;
 
     vec3 light = ambient + diffuse;
-
 
     float specularStrength = 0.5;
     if(dot(light_direction, normal) < 0.0) 
@@ -45,6 +43,6 @@ void main()
         light += specular;
     }
 
-    fragColor = vec4(light * ssao, 1.0);
+    fragColor = vec4(pow(light * ssao, vec3(1.0 / 2.2)), 1.0);
 }
 
