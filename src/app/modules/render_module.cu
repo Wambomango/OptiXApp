@@ -64,7 +64,7 @@ extern "C" __global__ void __raygen__rg()
 
 extern "C" __global__ void __miss__ms()
 {
-    setPayload(make_float3(0.5f, 0.5f, 0.9f));
+    setPayload(make_float3(0.5f, 0.6f, 0.9f));
 }
 
 extern "C" __global__ void __closesthit__ch()
