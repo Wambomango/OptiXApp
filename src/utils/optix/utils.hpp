@@ -12,10 +12,6 @@
 
 #include <spdlog/spdlog.h>
 
-#define MA_INCLUDE_DIRS                                      \
-    "/home/mario/Desktop/Masterarbeit/OptiXApp/src/modules", \
-    "/home/mario/Desktop/Masterarbeit/OptiXApp/dependencies/OptiX",
-
 #define MA_OPTIONS         \
     "-std=c++11",          \
         "-arch",           \
@@ -27,15 +23,15 @@
         "-D__x86_64",      \
         "-optix-ir",
 
-#define OPTIX_CHECK(call) Utils::optixCheck(call, #call, __FILE__, __LINE__)
+#define OPTIX_CHECK(call) Utils::OptiXCheck(call, #call, __FILE__, __LINE__)
 #define OPTIX_CHECK_LOG(call)                                                              \
     {                                                                                      \
         char LOG[2048];                                                                    \
         size_t LOG_SIZE = sizeof(LOG);                                                     \
-        Utils::optixCheckLog(call, LOG, sizeof(LOG), LOG_SIZE, #call, __FILE__, __LINE__); \
+        Utils::OptiXCheckLog(call, LOG, sizeof(LOG), LOG_SIZE, #call, __FILE__, __LINE__); \
     }
 
-#define CUDA_CHECK(call) Utils::cudaCheck(call, #call, __FILE__, __LINE__)
+#define CUDA_CHECK(call) Utils::CudaCheck(call, #call, __FILE__, __LINE__)
 
 #define NVRTC_CHECK_ERROR(func)                                                                                                                          \
     do                                                                                                                                                   \
@@ -47,7 +43,7 @@
 
 namespace Utils
 {
-    inline void optixCheck(OptixResult res, const char *call, const char *file, unsigned int line)
+    inline void OptiXCheck(OptixResult res, const char *call, const char *file, unsigned int line)
     {
         if (res != OPTIX_SUCCESS)
         {
@@ -57,7 +53,7 @@ namespace Utils
         }
     };
 
-    inline void optixCheckLog(OptixResult res, const char *log, size_t sizeof_log, size_t sizeof_log_returned, const char *call, const char *file, unsigned int line)
+    inline void OptiXCheckLog(OptixResult res, const char *log, size_t sizeof_log, size_t sizeof_log_returned, const char *call, const char *file, unsigned int line)
     {
         if (res != OPTIX_SUCCESS)
         {
@@ -68,7 +64,7 @@ namespace Utils
         }
     }
 
-    inline void cudaCheck(cudaError_t error, const char *call, const char *file, unsigned int line)
+    inline void CudaCheck(cudaError_t error, const char *call, const char *file, unsigned int line)
     {
         if (error != cudaSuccess)
         {
@@ -91,9 +87,12 @@ namespace Utils
         return buffer.str();
     }
 
-    inline std::string CudaToOptiXIR(const std::string &name, const std::string &content, std::vector<const char *> include_dirs = {MA_INCLUDE_DIRS}, std::vector<const char *> compile_options = {MA_OPTIONS})
+    inline std::string CudaToOptiXIR(const std::string &name, const std::string &content, std::vector<const char *> include_dirs = {}, std::vector<const char *> compile_options = {MA_OPTIONS})
     {
         std::vector<std::string> options;
+        options.push_back(std::string("-I") + OPTIX_INCLUDE_DIR);
+        options.push_back(std::string("-I") + CUDA_TOOLKIT_INCLUDE_DIR);
+
         for (const char *dir : include_dirs)
         {
             options.push_back(std::string("-I") + dir);
@@ -116,13 +115,14 @@ namespace Utils
 
         // Retrieve log output
         size_t log_size = 0;
-        NVRTC_CHECK_ERROR(nvrtcGetProgramLogSize(prog, &log_size));
+        nvrtcGetProgramLogSize(prog, &log_size);
 
         std::string g_nvrtcLog;
         g_nvrtcLog.resize(log_size);
         if (log_size > 1)
         {
-            NVRTC_CHECK_ERROR(nvrtcGetProgramLog(prog, &g_nvrtcLog[0]));
+            nvrtcGetProgramLog(prog, &g_nvrtcLog[0]);
+            SPDLOG_INFO("NVRTC Compilation log for '{}':\n{}", name, g_nvrtcLog);
         }
         if (compileRes == NVRTC_SUCCESS)
         {

@@ -100,6 +100,16 @@ void Camera::UpdateViewMatrix()
     view_matrix = glm::eulerAngleX(glm::radians(-orientation.y)) * glm::eulerAngleY(glm::radians(orientation.x)) * glm::translate(glm::mat4(1.0f), -position);
 }
 
+float Camera::GetFOV()
+{
+    return fov;
+}
+
+float Camera::GetAspectRatio()
+{
+    return aspect_ratio;
+}
+
 void Camera::OnScroll(double xoffset, double yoffset)
 {
     fov -= static_cast<float>(yoffset);

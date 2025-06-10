@@ -12,9 +12,7 @@ SET(APP_LIBS    spdlog::spdlog
                 CUDA::nvrtc
                 OptiX)
 
-SET(APP_INCLUDES ${APP_PARENT_DIR} ${CUDAToolkit_INCLUDE_DIRS})
-SET(SHADER_DIR ${APP_DIR}/shader)
-
+get_target_property(OPTIX_INCLUDE_DIR OptiX INCLUDE_DIRECTORIES)
 
 add_executable(OptiXApp main.cu
                         window.cpp
@@ -23,6 +21,10 @@ add_executable(OptiXApp main.cu
                         ssao.cpp
                         optix_renderer.cu)
 
-target_compile_definitions(OptiXApp PUBLIC SHADER_DIR="${SHADER_DIR}/")
-target_include_directories(OptiXApp PUBLIC ${APP_INCLUDES})
+target_compile_definitions(OptiXApp PUBLIC SHADER_DIR="${APP_DIR}/shader/")
+target_compile_definitions(OptiXApp PUBLIC MODULE_DIR="${APP_DIR}/modules/")
+target_compile_definitions(OptiXApp PUBLIC OPTIX_INCLUDE_DIR="${OPTIX_INCLUDE_DIR}/")
+target_compile_definitions(OptiXApp PUBLIC CUDA_TOOLKIT_INCLUDE_DIR="${CUDAToolkit_INCLUDE_DIRS}/")
+
+target_include_directories(OptiXApp PUBLIC ${APP_PARENT_DIR} ${CUDAToolkit_INCLUDE_DIRS} ${APP_DIR}/modules/)
 target_link_libraries(OptiXApp PUBLIC ${APP_LIBS})

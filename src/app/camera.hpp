@@ -21,6 +21,8 @@ class Camera
         glm::vec3 GetOrientation();
         glm::mat4 GetViewMatrix();
         glm::mat4 GetProjectionMatrix();
+        float GetFOV();
+        float GetAspectRatio();
         float GetNearPlane();
         float GetFarPlane();
         void UpdateProjectionMatrix();

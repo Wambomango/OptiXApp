@@ -73,7 +73,6 @@ int Window::AddKeyCallback(std::function<void(int, int, int, int)> callback)
     }
     key_callbacks[key] = callback;
 
-    SPDLOG_WARN("Adding key callback with key {}", key);
     return key; 
 }
 

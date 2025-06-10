@@ -34,7 +34,7 @@ namespace OptiX
                                                 &direct_callable_stack_size_from_state, &continuation_stack_size));
             OPTIX_CHECK(optixPipelineSetStackSize(pipeline, direct_callable_stack_size_from_traversal,
                                                 direct_callable_stack_size_from_state, continuation_stack_size,
-                                                2 // maxTraversableDepth
+                                                1 // maxTraversableDepth
                                                 ));
   
         }
