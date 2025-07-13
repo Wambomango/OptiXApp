@@ -26,5 +26,5 @@ target_compile_definitions(OptiXApp PUBLIC MODULE_DIR="${APP_DIR}/modules/")
 target_compile_definitions(OptiXApp PUBLIC OPTIX_INCLUDE_DIR="${OPTIX_INCLUDE_DIR}/")
 target_compile_definitions(OptiXApp PUBLIC CUDA_TOOLKIT_INCLUDE_DIR="${CUDAToolkit_INCLUDE_DIRS}/")
 
-target_include_directories(OptiXApp PUBLIC ${APP_PARENT_DIR} ${CUDAToolkit_INCLUDE_DIRS} ${APP_DIR}/modules/)
+target_include_directories(OptiXApp PUBLIC ${APP_PARENT_DIR} ${CUDAToolkit_INCLUDE_DIRS} ${APP_DIR}/modules/ ${X11_Xrandr_INCLUDE_PATH})
 target_link_libraries(OptiXApp PUBLIC ${APP_LIBS})

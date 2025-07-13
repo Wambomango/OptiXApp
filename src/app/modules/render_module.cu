@@ -87,7 +87,7 @@ extern "C" __global__ void __closesthit__ch()
         float3 world_position = optixGetWorldRayOrigin() + optixGetWorldRayDirection() * optixGetRayTmax();
         float3 viewDir = normalize(params.camera_position - world_position);
         float3 reflectDir = reflect(params.light_direction, normal);
-        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 1);
+        float spec = powf(max(dot(viewDir, reflectDir), 0.0), 1);
         float3 specular = specularStrength * spec * params.light_color;
         light += specular;
     }

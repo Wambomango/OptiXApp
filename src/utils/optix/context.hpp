@@ -24,8 +24,38 @@ namespace OptiX
 
         ~Context()
         {
-            OPTIX_CHECK(optixDeviceContextDestroy(context));
-            OPTIX_CHECK(optixUninitWithHandle(handle));
+            if(context)
+            {
+                OPTIX_CHECK(optixDeviceContextDestroy(context));
+            }
+            if(handle)
+            {
+                OPTIX_CHECK(optixUninitWithHandle(handle));
+            }
+        }
+
+
+        Context(const Context &) = delete;
+        Context &operator=(const Context &) = delete;
+
+        Context(Context &&other)
+        {
+            handle = other.handle;
+            context = other.context;
+            other.handle = nullptr;
+            other.context = nullptr;
+        }
+
+        Context &operator=(Context &&other)
+        {
+            if (this != &other)
+            {
+                handle = other.handle;
+                context = other.context;
+                other.handle = nullptr;
+                other.context = nullptr;
+            }
+            return *this;
         }
 
         OptixDeviceContext Handle()

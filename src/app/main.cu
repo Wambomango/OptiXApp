@@ -69,5 +69,6 @@ int main(int arg, char **argv)
         window.PollEvents();
     }
 
+
     return 0;
 }

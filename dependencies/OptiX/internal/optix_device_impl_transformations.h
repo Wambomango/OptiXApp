@@ -1,14 +1,23 @@
-/* 
-* SPDX-FileCopyrightText: Copyright (c) 2019 - 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved. 
-* SPDX-License-Identifier: LicenseRef-NvidiaProprietary 
-* 
-* NVIDIA CORPORATION, its affiliates and licensors retain all intellectual 
-* property and proprietary rights in and to this material, related 
-* documentation and any modifications thereto. Any use, reproduction, 
-* disclosure or distribution of this material and related documentation 
-* without an express license agreement from NVIDIA CORPORATION or 
-* its affiliates is strictly prohibited. 
+/*
+* Copyright (c) 2023 NVIDIA Corporation.  All rights reserved.
+*
+* NVIDIA Corporation and its licensors retain all intellectual property and proprietary
+* rights in and to this software, related documentation and any modifications thereto.
+* Any use, reproduction, disclosure or distribution of this software and related
+* documentation without an express license agreement from NVIDIA Corporation is strictly
+* prohibited.
+*
+* TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE IS PROVIDED *AS IS*
+* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL WARRANTIES, EITHER EXPRESS OR IMPLIED,
+* INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+* PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE LIABLE FOR ANY
+* SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT
+* LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF
+* BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR
+* INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED OF THE POSSIBILITY OF
+* SUCH DAMAGES
 */
+
 /**
 * @file   optix_device_impl_transformations.h
 * @author NVIDIA Corporation
@@ -74,20 +83,23 @@ static __forceinline__ __device__ float4 optixMultiplyRowMatrix( const float4 ve
 // Converts the SRT transformation srt into a 3x4 matrix with rows m0, m1, and m2
 static __forceinline__ __device__ void optixGetMatrixFromSrt( float4& m0, float4& m1, float4& m2, const OptixSRTData& srt )
 {
-    // assumed to be normalized
     const float4 q = {srt.qx, srt.qy, srt.qz, srt.qw};
 
-    const float sqw = q.w * q.w;
-    const float sqx = q.x * q.x;
-    const float sqy = q.y * q.y;
-    const float sqz = q.z * q.z;
+    // normalize
+    const float  inv_sql = 1.f / ( srt.qx * srt.qx + srt.qy * srt.qy + srt.qz * srt.qz + srt.qw * srt.qw );
+    const float4 nq      = optixMulFloat4( q, inv_sql );
 
-    const float xy = q.x * q.y;
-    const float zw = q.z * q.w;
-    const float xz = q.x * q.z;
-    const float yw = q.y * q.w;
-    const float yz = q.y * q.z;
-    const float xw = q.x * q.w;
+    const float sqw = q.w * nq.w;
+    const float sqx = q.x * nq.x;
+    const float sqy = q.y * nq.y;
+    const float sqz = q.z * nq.z;
+
+    const float xy = q.x * nq.y;
+    const float zw = q.z * nq.w;
+    const float xz = q.x * nq.z;
+    const float yw = q.y * nq.w;
+    const float yz = q.y * nq.z;
+    const float xw = q.x * nq.w;
 
     m0.x = ( sqx - sqy - sqz + sqw );
     m0.y = 2.0f * ( xy - zw );
@@ -322,17 +334,16 @@ static __forceinline__ __device__ void optixGetInterpolatedTransformationFromHan
     }
 }
 
-// Returns the world-to-object transformation matrix resulting from the transform stack and ray time of the given hit object.
-template<typename HitState>
-static __forceinline__ __device__ void optixGetWorldToObjectTransformMatrix( const HitState& hs, float4& m0, float4& m1, float4& m2 )
+// Returns the world-to-object transformation matrix resulting from the current transform stack and current ray time.
+static __forceinline__ __device__ void optixGetWorldToObjectTransformMatrix( float4& m0, float4& m1, float4& m2 )
 {
-    const unsigned int size = hs.getTransformListSize();
-    const float        time = hs.getRayTime();
+    const unsigned int size = optixGetTransformListSize();
+    const float        time = optixGetRayTime();
 
 #pragma unroll 1
     for( unsigned int i = 0; i < size; ++i )
     {
-        OptixTraversableHandle handle = hs.getTransformListHandle( i );
+        OptixTraversableHandle handle = optixGetTransformListHandle( i );
 
         float4 trf0, trf1, trf2;
         optixGetInterpolatedTransformationFromHandle( trf0, trf1, trf2, handle, time, /*objectToWorld*/ false );
@@ -354,17 +365,16 @@ static __forceinline__ __device__ void optixGetWorldToObjectTransformMatrix( con
     }
 }
 
-// Returns the object-to-world transformation matrix resulting from the transform stack and ray time of the given hit object.
-template<typename HitState>
-static __forceinline__ __device__ void optixGetObjectToWorldTransformMatrix( const HitState& hs, float4& m0, float4& m1, float4& m2 )
+// Returns the object-to-world transformation matrix resulting from the current transform stack and current ray time.
+static __forceinline__ __device__ void optixGetObjectToWorldTransformMatrix( float4& m0, float4& m1, float4& m2 )
 {
-    const int   size = hs.getTransformListSize();
-    const float time = hs.getRayTime();
+    const int   size = optixGetTransformListSize();
+    const float time = optixGetRayTime();
 
 #pragma unroll 1
     for( int i = size - 1; i >= 0; --i )
     {
-        OptixTraversableHandle handle = hs.getTransformListHandle( i );
+        OptixTraversableHandle handle = optixGetTransformListHandle( i );
 
         float4 trf0, trf1, trf2;
         optixGetInterpolatedTransformationFromHandle( trf0, trf1, trf2, handle, time, /*objectToWorld*/ true );

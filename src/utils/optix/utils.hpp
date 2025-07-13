@@ -20,8 +20,7 @@
         "-default-device", \
         "-rdc",            \
         "true",            \
-        "-D__x86_64",      \
-        "-optix-ir",
+        "-D__x86_64",      
 
 #define OPTIX_CHECK(call) Utils::OptiXCheck(call, #call, __FILE__, __LINE__)
 #define OPTIX_CHECK_LOG(call)                                                              \
@@ -134,12 +133,13 @@ namespace Utils
             NVRTC_CHECK_ERROR(compileRes);
         }
 
+
         // Retrieve OPTIXIR/PTX code
-        size_t n_bytes;
+        size_t input_size = 0;
         std::string bytecode;
-        NVRTC_CHECK_ERROR(nvrtcGetOptiXIRSize(prog, &n_bytes));
-        bytecode.resize(n_bytes);
-        NVRTC_CHECK_ERROR(nvrtcGetOptiXIR(prog, &bytecode[0]));
+        NVRTC_CHECK_ERROR( nvrtcGetPTXSize( prog, &input_size ) );
+        bytecode.resize( input_size );
+        NVRTC_CHECK_ERROR( nvrtcGetPTX( prog, &bytecode[0] ) );
         NVRTC_CHECK_ERROR(nvrtcDestroyProgram(&prog));
 
         return bytecode;
