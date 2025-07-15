@@ -2,7 +2,6 @@ SET(PYMWIR_DIR ${CMAKE_CURRENT_LIST_DIR})
 cmake_path(GET PYMWIR_DIR PARENT_PATH PYMWIR_PARENT_DIR)
 
 
-find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib")
 
 pybind11_add_module(PyMWIR pymwir.cpp)
 target_include_directories(PyMWIR PUBLIC ${PYMWIR_PARENT_DIR} ${Python3_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})

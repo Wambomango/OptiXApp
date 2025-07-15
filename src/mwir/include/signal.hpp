@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <glm/glm.hpp>
 #include <vector>
 
@@ -17,8 +16,8 @@ public:
     ~Signal();
     Signal(const Signal&) = delete;
     Signal& operator=(const Signal&) = delete;
-    Signal(Signal&&) = default;
-    Signal& operator=(Signal&&) = default;
+    Signal(Signal&&) noexcept;
+    Signal& operator=(Signal&&) noexcept;
 
     glm::vec2 GetFrequencyRange() const;
     int GetNFrequencies() const;
@@ -26,7 +25,7 @@ public:
 
 protected:
     friend class Scene;
-    std::unique_ptr<SignalImpl> impl;
+    SignalImpl *impl;
 };
 
 }

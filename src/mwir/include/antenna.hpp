@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <glm/glm.hpp>
 
 namespace MWIR
@@ -12,26 +11,29 @@ class Antenna
 {
 
 public:
-    Antenna(glm::vec3 position, glm::mat3 orientation, glm::vec2 fov);
+    Antenna(glm::vec3 position, glm::vec3 euler, glm::vec2 fov, float ray_density);
     ~Antenna();    
     Antenna(const Antenna&) = delete;
     Antenna& operator=(const Antenna&) = delete;
-    Antenna(Antenna&&) = default;
-    Antenna& operator=(Antenna&&) = default;
+    Antenna(Antenna&&) noexcept;
+    Antenna& operator=(Antenna&&) noexcept;
 
     void SetPosition(const glm::vec3& position);
-    void SetOrientation(const glm::mat3& orientation);
+    void SetOrientation(const glm::vec3& euler);
     void SetFOV(const glm::vec2& fov);
+    void SetRayDensity(float ray_density);
 
     glm::vec3 GetPosition() const;
-    glm::mat3 GetOrientation() const;
+    glm::vec3 GetOrientation() const;
     glm::vec2 GetFOV() const;
+    float GetRayDensity() const;
+    glm::mat3 GetRotationMatrix() const;
+    float GetSolidAngle() const;
+    glm::ivec2 GetNRays() const;
 
 protected:
     friend class Scene;
-    std::unique_ptr<AntennaImpl> impl;
-
- 
+    AntennaImpl *impl; 
 };
 
 }

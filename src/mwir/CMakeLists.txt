@@ -26,8 +26,8 @@ target_compile_definitions(MWIR PUBLIC OPTIX_INCLUDE_DIR="${OPTIX_INCLUDE_DIR}/"
 target_compile_definitions(MWIR PUBLIC CUDA_TOOLKIT_INCLUDE_DIR="${CUDAToolkit_INCLUDE_DIRS}/")
 
 target_include_directories(MWIR INTERFACE ${MWIR_DIR}/include)
-target_include_directories(MWIR PUBLIC ${MWIR_PARENT_DIR} ${CUDAToolkit_INCLUDE_DIRS} ${MWIR_DIR}/modules/)
-target_link_libraries(MWIR PUBLIC ${MWIR_LIBS})
+target_include_directories(MWIR PUBLIC ${MWIR_PARENT_DIR} ${CUDAToolkit_INCLUDE_DIRS} ${MWIR_DIR}/modules/ ${TORCH_INCLUDE_DIRS})
+target_link_libraries(MWIR PUBLIC ${MWIR_LIBS} ${TORCH_LIBRARIES})
 
 set_target_properties(MWIR PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

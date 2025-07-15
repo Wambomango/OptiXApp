@@ -6,23 +6,56 @@ namespace MWIR
 
 Renderer::Renderer(Scene &&scene)
 {
-    impl = std::make_unique<RendererImpl>(std::move(*scene.impl));
-    scene.impl.reset();
+    impl = new RendererImpl(std::move(*scene.impl));
+    scene.impl = nullptr;
 }
 
 Renderer::~Renderer()
 {
+    if (impl)
+    {
+        delete impl;
+    }
+}
+
+Renderer::Renderer(Renderer&& other) noexcept : impl(std::move(other.impl))
+{
+    other.impl = nullptr; 
+}
+
+Renderer& Renderer::operator=(Renderer&& other) noexcept
+{
+    if (this != &other)
+    {
+        if(impl)
+        {
+            delete impl; 
+        }
+        impl = other.impl; 
+        other.impl = nullptr; 
+    }
+    return *this;
 }
 
 void Renderer::SetScene(Scene&& scene)
 {
-    impl->SetScene(std::move(*scene.impl));
-    scene.impl.reset();
+    if (impl)
+    {
+        impl->SetScene(std::move(*scene.impl));
+        scene.impl = nullptr;
+    }
 }
 
-void Renderer::Render(int n_rays, int batch_size)
+at::Tensor Renderer::Render()
 {
-    impl->Render(n_rays, batch_size);
-}
+    if (impl)
+    {
+        return impl->Render();
+    }
+    return at::Tensor();
+} 
+
+
+
 
 }

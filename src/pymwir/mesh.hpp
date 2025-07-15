@@ -35,6 +35,11 @@ public:
 
     void SetVertices(torch::Tensor &vertices)
     {
+        if (!mwir_mesh_)
+        {
+            throw std::runtime_error("Mesh ownership has been transferred.");
+        }
+
         if (vertices.sizes() != std::vector<int64_t>{-1, 3})
         {
             throw std::invalid_argument("vertices must be a tensor of shape [N, 3]");

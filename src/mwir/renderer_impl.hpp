@@ -3,6 +3,8 @@
 #include "mwir/scene_impl.hpp"
 #include "mwir/forward_pipeline.hpp"
 
+#include <torch/torch.h>
+
 
 namespace MWIR
 {
@@ -20,7 +22,7 @@ public:
     RendererImpl& operator=(RendererImpl&&) = default;
 
     void SetScene(SceneImpl &&scene);
-    void Render(int n_rays, int batch_size);
+    at::Tensor Render();
 
 private:
     void UpdateParams();
@@ -32,10 +34,10 @@ private:
     Params params;
     CUdeviceptr d_params = 0;
 
-    EField *results = nullptr;
-    CUdeviceptr d_results = 0;
     int n_receivers = 0;
     int n_frequencies = 0;
+    int result_bytes = 0;
+    CUdeviceptr d_results = 0;
 };
 
 }

@@ -108,20 +108,25 @@ namespace MWIR
         CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_senders)));
         CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_senders), senders.size() * sizeof(AntennaData)));
 
-        AntennaData h_senders[senders.size()];
+        h_senders.resize(senders.size());
+
         for (size_t i = 0; i < senders.size(); ++i)
         {
             h_senders[i].position = float3{senders[i].GetPosition().x, senders[i].GetPosition().y, senders[i].GetPosition().z};
-            h_senders[i].forward = float3{senders[i].GetOrientation()[0].x, senders[i].GetOrientation()[0].y, senders[i].GetOrientation()[0].z};
-            h_senders[i].left = float3{senders[i].GetOrientation()[1].x, senders[i].GetOrientation()[1].y, senders[i].GetOrientation()[1].z};
-            h_senders[i].up = float3{senders[i].GetOrientation()[2].x, senders[i].GetOrientation()[2].y, senders[i].GetOrientation()[2].z};
+            h_senders[i].forward = float3{senders[i].GetRotationMatrix()[0].x, senders[i].GetRotationMatrix()[0].y, senders[i].GetRotationMatrix()[0].z};
+            h_senders[i].left = float3{senders[i].GetRotationMatrix()[1].x, senders[i].GetRotationMatrix()[1].y, senders[i].GetRotationMatrix()[1].z};
+            h_senders[i].up = float3{senders[i].GetRotationMatrix()[2].x, senders[i].GetRotationMatrix()[2].y, senders[i].GetRotationMatrix()[2].z};
             h_senders[i].fov = float2{senders[i].GetFOV().x, senders[i].GetFOV().y};
+            h_senders[i].ray_density = senders[i].GetRayDensity();
+            h_senders[i].solid_angle = senders[i].GetSolidAngle();
+            h_senders[i].n_rays = int2{senders[i].GetNRays().x, senders[i].GetNRays().y};
         }
 
-        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_senders), h_senders, senders.size() * sizeof(AntennaData), cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_senders), h_senders.data(), senders.size() * sizeof(AntennaData), cudaMemcpyHostToDevice));
 
         params.n_senders = static_cast<unsigned int>(senders.size());
-        params.senders = reinterpret_cast<AntennaData *>(d_senders);
+        params.d_senders = reinterpret_cast<AntennaData *>(d_senders);
+        params.h_senders = h_senders.data();
     }
 
     void SceneImpl::UpdateReceivers(Params &params)
@@ -135,20 +140,25 @@ namespace MWIR
         CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_receivers)));
         CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_receivers), receivers.size() * sizeof(AntennaData)));
 
-        AntennaData h_receivers[receivers.size()];
+        h_receivers.resize(receivers.size());
+
         for (size_t i = 0; i < receivers.size(); ++i)
         {
             h_receivers[i].position = float3{receivers[i].GetPosition().x, receivers[i].GetPosition().y, receivers[i].GetPosition().z};
-            h_receivers[i].forward = float3{receivers[i].GetOrientation()[0].x, receivers[i].GetOrientation()[0].y, receivers[i].GetOrientation()[0].z};
-            h_receivers[i].left = float3{receivers[i].GetOrientation()[1].x, receivers[i].GetOrientation()[1].y, receivers[i].GetOrientation()[1].z};
-            h_receivers[i].up = float3{receivers[i].GetOrientation()[2].x, receivers[i].GetOrientation()[2].y, receivers[i].GetOrientation()[2].z};
+            h_receivers[i].forward = float3{receivers[i].GetRotationMatrix()[0].x, receivers[i].GetRotationMatrix()[0].y, receivers[i].GetRotationMatrix()[0].z};
+            h_receivers[i].left = float3{receivers[i].GetRotationMatrix()[1].x, receivers[i].GetRotationMatrix()[1].y, receivers[i].GetRotationMatrix()[1].z};
+            h_receivers[i].up = float3{receivers[i].GetRotationMatrix()[2].x, receivers[i].GetRotationMatrix()[2].y, receivers[i].GetRotationMatrix()[2].z};
             h_receivers[i].fov = float2{receivers[i].GetFOV().x, receivers[i].GetFOV().y};
+            h_receivers[i].ray_density = receivers[i].GetRayDensity();
+            h_receivers[i].solid_angle = receivers[i].GetSolidAngle();
+            h_receivers[i].n_rays = int2{receivers[i].GetNRays().x, receivers[i].GetNRays().y};
         }
 
-        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_receivers), h_receivers, receivers.size() * sizeof(AntennaData), cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_receivers), h_receivers.data(), receivers.size() * sizeof(AntennaData), cudaMemcpyHostToDevice));
 
         params.n_receivers = static_cast<unsigned int>(receivers.size());
-        params.receivers = reinterpret_cast<AntennaData *>(d_receivers);
+        params.h_receivers = h_receivers.data();
+        params.d_receivers = reinterpret_cast<AntennaData *>(d_receivers);
     }
 
     void SceneImpl::UpdateSignal(Params &params)

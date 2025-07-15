@@ -13,28 +13,55 @@ Scene::Scene(Mesh &&mesh, std::vector<Antenna> &&senders, std::vector<Antenna> &
     for (auto& sender : senders)
     {
         senders_impl.push_back(std::move(*sender.impl));
-        sender.impl.reset();
+        sender.impl = nullptr;
     }
     std::vector<AntennaImpl> receivers_impl;
     for (auto& receiver : receivers)
     {
         receivers_impl.push_back(std::move(*receiver.impl));
-        receiver.impl.reset();
+        receiver.impl = nullptr;
     }
 
-    impl = std::make_unique<SceneImpl>(std::move(*mesh.impl), std::move(senders_impl), std::move(receivers_impl), std::move(*signal.impl));
-    mesh.impl.reset();
-    signal.impl.reset();
+    impl = new SceneImpl(std::move(*mesh.impl), std::move(senders_impl), std::move(receivers_impl), std::move(*signal.impl));
+    mesh.impl = nullptr;
+    signal.impl = nullptr;
 }
 
 Scene::~Scene()
 {
+    if (impl)
+    {
+        delete impl;
+    }
 }
+
+Scene::Scene(Scene&& other) noexcept : impl(std::move(other.impl))
+{
+    other.impl = nullptr; 
+}
+
+Scene& Scene::operator=(Scene&& other) noexcept
+{
+    if (this != &other)
+    {
+        if (impl)
+        {
+            delete impl; 
+        }
+        impl = other.impl; 
+        other.impl = nullptr; 
+    }
+    return *this;
+}
+
 
 void Scene::SetMesh(Mesh &&mesh)
 {
-    impl->SetMesh(std::move(*mesh.impl));
-    mesh.impl.reset();
+    if (impl)
+    {
+        impl->SetMesh(std::move(*mesh.impl));
+        mesh.impl = nullptr;
+    }
 }
 
 void Scene::SetSenders(std::vector<Antenna> &&senders)
@@ -43,9 +70,13 @@ void Scene::SetSenders(std::vector<Antenna> &&senders)
     for (auto& sender : senders)
     {
         senders_impl.push_back(std::move(*sender.impl));
-        sender.impl.reset();
+        sender.impl = nullptr;
     }
-    impl->SetSenders(std::move(senders_impl));
+
+    if(impl)
+    {
+        impl->SetSenders(std::move(senders_impl));
+    }
 }
 
 void Scene::SetReceivers(std::vector<Antenna> &&receivers)
@@ -54,15 +85,22 @@ void Scene::SetReceivers(std::vector<Antenna> &&receivers)
     for (auto& receiver : receivers)
     {
         receivers_impl.push_back(std::move(*receiver.impl));
-        receiver.impl.reset();
+        receiver.impl = nullptr;
     }
-    impl->SetReceivers(std::move(receivers_impl));
+    
+    if(impl)
+    {
+        impl->SetReceivers(std::move(receivers_impl));
+    }
 }
 
 void Scene::SetSignal(Signal &&signal)
 {
-    SignalImpl signal_impl = std::move(*signal.impl);
-    signal.impl.reset();
+    if (impl)
+    {
+        impl->SetSignal(std::move(*signal.impl));
+        signal.impl = nullptr;
+    }
 }
 
 }

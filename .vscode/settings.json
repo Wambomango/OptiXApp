@@ -77,7 +77,13 @@
       "unordered_set": "cpp",
       "ranges": "cpp",
       "typeindex": "cpp",
-      "internal.h": "c"
+      "internal.h": "c",
+      "__nullptr": "cpp",
+      "__hash_table": "cpp",
+      "__split_buffer": "cpp",
+      "__tree": "cpp",
+      "queue": "cpp",
+      "stack": "cpp"
     },
 
   "python.analysis.extraPaths": [

@@ -2,10 +2,10 @@
 
 #include <optix_function_table_definition.h>
 
-__global__ void AdvanceBatch(CUdeviceptr d_params)
+
+__global__ void AdvanceAntenna(Params *params)
 {
-    Params *params = reinterpret_cast<Params *>(d_params);
-    params->batch_number++;
+    params->antenna_index++;
 }
 
 namespace MWIR
@@ -29,52 +29,45 @@ RendererImpl::~RendererImpl()
 void RendererImpl::SetScene(SceneImpl &&scene)
 {
     this->scene = std::move(scene);
+    scene.UpdateParams(params);
 }
 
-void RendererImpl::Render(int n_rays, int batch_size)
-{    
-    if (n_rays <= 0)
+at::Tensor RendererImpl::Render()
+{   
+    params.antenna_index = 0;
+    CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(d_params), &params, sizeof(Params), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(d_results), 0, result_bytes, stream));
+
+    for(int i = 0; i < params.n_senders; ++i)
     {
-        throw std::invalid_argument("Number of rays must be greater than zero.");
+        SPDLOG_INFO("Rendering sender {}/{} with {}/{} rays", i + 1, params.n_senders, params.h_senders[i].n_rays.x, params.h_senders[i].n_rays.y);
+        OPTIX_CHECK(optixLaunch(forward_pipeline.pipeline->Handle(), stream, d_params, sizeof(Params), &forward_pipeline.sbt, params.h_senders[i].n_rays.x, params.h_senders[i].n_rays.y, 1));
+        AdvanceAntenna<<<1, 1, 0, stream>>>(reinterpret_cast<Params *>(d_params));
     }
-    n_rays = ((n_rays / batch_size) + 1) * batch_size;
-
-    scene.UpdateParams(params);
-    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(d_results), 0, n_receivers * n_frequencies * sizeof(EField), stream));
-
-    while(n_rays > 0)
-    {
-        n_rays -= batch_size;
-        OPTIX_CHECK(optixLaunch(forward_pipeline.pipeline->Handle(), stream, d_params, sizeof(Params), &forward_pipeline.sbt, batch_size, params.n_senders, 1));
-        AdvanceBatch<<<1, 1, 0, stream>>>(d_params);
-    }
-
+    
+    at::Tensor result_tensor = at::empty({n_receivers, n_frequencies, 3}, at::dtype(at::kComplexFloat).device(at::kCPU, 0));
+    CUDA_CHECK(cudaMemcpyAsync(result_tensor.data_ptr(), reinterpret_cast<void *>(d_results), result_bytes, cudaMemcpyDeviceToHost, stream));
     CUDA_CHECK(cudaStreamSynchronize(stream));
-    CUDA_CHECK(cudaMemcpyAsync(&results, reinterpret_cast<void *>(d_results), n_receivers * n_frequencies * sizeof(EField), cudaMemcpyDeviceToHost, stream));
+
+    SPDLOG_INFO("Finished rendering");
+    return result_tensor;
 }
 
 void RendererImpl::UpdateParams()
 {
-    params.batch_number = 0;
-
     scene.UpdateParams(params);
+
     int new_n_receivers = params.n_receivers;
     int new_n_frequencies = params.signal.n_frequencies;
 
     if(new_n_receivers != n_receivers || new_n_frequencies != n_frequencies)
     {
         n_receivers = new_n_receivers;
-        n_frequencies = new_n_frequencies;        
+        n_frequencies = new_n_frequencies;
+        result_bytes = n_receivers * n_frequencies * sizeof(EField);
         CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_results)));
-        size_t results_size = n_receivers * n_frequencies * sizeof(EField);
-        CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_results), results_size));
+        CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_results), result_bytes));
         params.result = reinterpret_cast<EField *>(d_results);
-
-        if (results)
-        {
-            delete[] results;
-        }
-        results = new EField[n_receivers * n_frequencies];
     }
 
     CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(d_params), &params, sizeof(Params), cudaMemcpyHostToDevice, stream));

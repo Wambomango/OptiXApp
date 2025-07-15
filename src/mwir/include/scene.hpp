@@ -4,7 +4,6 @@
 #include "antenna.hpp"
 #include "signal.hpp"
 
-#include <memory>
 #include <glm/glm.hpp>
 #include <vector>
 
@@ -22,8 +21,8 @@ public:
     ~Scene();
     Scene(const Scene&) = delete;
     Scene& operator=(const Scene&) = delete;
-    Scene(Scene&&) = default;
-    Scene& operator=(Scene&&) = default;
+    Scene(Scene&&) noexcept;
+    Scene& operator=(Scene&&) noexcept;
 
     void SetMesh(Mesh &&mesh);
     void SetSenders(std::vector<Antenna> &&senders);
@@ -33,7 +32,7 @@ public:
 
 protected:
     friend class Renderer;
-    std::unique_ptr<SceneImpl> impl;
+    SceneImpl *impl;
 };
 
 }

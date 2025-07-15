@@ -17,13 +17,17 @@ static __forceinline__ __device__ void setPayload( float3 p )
     // optixSetPayload_2( __float_as_uint( p.z ) );
 }
 
-static __forceinline__ __device__ void computeRay( uint3 idx, uint3 dim, float3& origin, float3& direction )
+static __forceinline__ __device__ void computeRay(uint3 idx, uint3 dim, float3& origin, float3& direction )
 {
-    // const float3 U = params.camera_u;
-    // const float3 V = params.camera_v;
-    // const float3 W = params.camera_w;
+    // float azimuth = params.fov.x * (0.5f * (static_cast<float>( idx.x ) / static_cast<float>( dim.x )) - 1.0f);
+    // float elevation = params.fov.y * (0.5f * (static_cast<float>( idx.y ) / static_cast<float>( dim.y )) - 1.0f);
     // const float2 d = 2.0f * make_float2(static_cast<float>( idx.x ) / static_cast<float>( dim.x ),
     //                                     static_cast<float>( idx.y ) / static_cast<float>( dim.y )) - 1.0f;
+
+
+
+
+
     // origin    = params.camera_position;
     // direction = normalize(d.x * U + d.y * V + W);
 }
@@ -33,8 +37,14 @@ extern "C" __global__ void __raygen__rg()
     // const uint3 idx = optixGetLaunchIndex();
     // const uint3 dim = optixGetLaunchDimensions();
 
+    
+
+
     // float3 ray_origin, ray_direction;
-    // computeRay(idx, dim, ray_origin, ray_direction);
+    // computeRay(idx, dim,  ray_origin, ray_direction);
+
+
+
 
     // unsigned int p0;
     // unsigned int p1;

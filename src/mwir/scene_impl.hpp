@@ -49,9 +49,11 @@ private:
     bool signal_updated = true;
 
     OptixTraversableHandle mesh_handle;
-    CUdeviceptr d_mesh;
-    CUdeviceptr d_senders;
-    CUdeviceptr d_receivers;
+    CUdeviceptr d_mesh = 0;
+    std::vector<AntennaData> h_senders;
+    CUdeviceptr d_senders = 0;
+    std::vector<AntennaData> h_receivers;
+    CUdeviceptr d_receivers = 0;
 };
 
 
