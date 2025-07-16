@@ -57,7 +57,6 @@ namespace MWIR
         {
             return;
         }
-
         mesh_updated = false;
 
         OptiX::Context &ctx = Context::GetInstance();

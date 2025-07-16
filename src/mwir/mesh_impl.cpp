@@ -28,7 +28,6 @@ MeshImpl& MeshImpl::operator=(MeshImpl&& other) noexcept
     {
         vertices = std::move(other.vertices);
         other.vertices.clear();
-
     }
     
     return *this;

@@ -6,7 +6,7 @@
                 "${workspaceFolder}/**",
                 "/home/mario/micromamba/envs/MA/include/**",
                 "/home/mario/micromamba/envs/MA/lib/python3.13/site-packages/torch/include/torch/csrc/api/include/torch/**",
-                "/home/mario/micromamba/envs/MA/lib/python3.13/site-packages/torch/include/torch/csrc/api/include"
+                "${workspaceFolder}/dependencies/**"
             ],
             "defines": [],
             "compilerPath": "/home/mario/micromamba/envs/MA/bin/gcc",

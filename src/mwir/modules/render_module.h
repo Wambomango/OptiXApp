@@ -2,6 +2,7 @@
 
 #include "types.h"
 
+#define OPTIX_MAX_GRID_DIM 256
 struct Params
 {    
     OptixTraversableHandle mesh_handle;
@@ -14,6 +15,8 @@ struct Params
     SignalData signal;
 
     int antenna_index;
+    int grid_x;
+    int grid_y;
     EField *result;
 };
 

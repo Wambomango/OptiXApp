@@ -26,6 +26,8 @@ public:
 
 private:
     void UpdateParams();
+    void RenderAntenna(int sender_index);
+
 
     ForwardPipeline forward_pipeline;
     SceneImpl scene;
