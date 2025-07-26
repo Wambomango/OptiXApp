@@ -1,5 +1,9 @@
 #include "mwir/antenna_impl.hpp"
 
+#include "mwir/modules/defines.h"
+
+
+
 namespace MWIR
 {
     AntennaImpl::AntennaImpl(glm::vec3 position, glm::vec3 euler, glm::vec2 fov, float ray_density)
@@ -75,18 +79,21 @@ namespace MWIR
         return 2 * fov.x * std::sin(fov.y);
     }
 
-    glm::ivec2 AntennaImpl::GetNRays() const
+    int AntennaImpl::GetNRays() const
     {
         return n_rays;
     }
 
-    void AntennaImpl::UpdateParameters()
+    int AntennaImpl::GetNBatches() const
     {
-        int n_rays_total = ray_density * GetSolidAngle();
-        int n_x = std::sqrt(n_rays_total * fov.x / fov.y);
-        int n_y = std::ceil(float(n_rays_total) / n_x);
-        n_rays = glm::ivec2(n_x, n_y);
-        ray_density = n_x * n_y / GetSolidAngle();
+        return n_batches;
     }
 
+    void AntennaImpl::UpdateParameters()
+    {
+        float n_rays_total = ray_density * GetSolidAngle();
+        n_batches = std::ceil(n_rays_total / (OPTIX_MAX_GRID_DIM * OPTIX_MAX_GRID_DIM));
+        n_rays = n_batches * (OPTIX_MAX_GRID_DIM * OPTIX_MAX_GRID_DIM);
+        ray_density = n_rays / GetSolidAngle();
+    }
 }

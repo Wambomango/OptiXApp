@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <spdlog/spdlog.h>
 
 namespace MWIR
 {
@@ -26,7 +27,8 @@ class AntennaImpl
         float GetRayDensity() const;
         glm::mat3 GetRotationMatrix() const;
         float GetSolidAngle() const;
-        glm::ivec2 GetNRays() const;
+        int GetNRays() const;
+        int GetNBatches() const;
 
     private:
         void UpdateParameters();
@@ -35,7 +37,8 @@ class AntennaImpl
         glm::vec3 euler;
         glm::vec2 fov;
         float ray_density;
-        glm::vec2 n_rays;
+        int n_rays;
+        int n_batches;
 };
 
 

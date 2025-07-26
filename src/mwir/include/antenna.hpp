@@ -29,7 +29,7 @@ public:
     float GetRayDensity() const;
     glm::mat3 GetRotationMatrix() const;
     float GetSolidAngle() const;
-    glm::ivec2 GetNRays() const;
+    int GetNRays() const;
 
 protected:
     friend class Scene;

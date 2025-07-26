@@ -5,7 +5,6 @@
 
 #include <torch/torch.h>
 
-
 namespace MWIR
 {
 

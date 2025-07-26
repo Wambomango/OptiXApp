@@ -122,13 +122,13 @@ float Antenna::GetSolidAngle() const
     return 0.0f;
 }
 
-glm::ivec2 Antenna::GetNRays() const
+int Antenna::GetNRays() const
 {
     if(impl)
     {
         return impl->GetNRays();
     }
-    return glm::ivec2(0);
+    return 0;
 }
 
 }

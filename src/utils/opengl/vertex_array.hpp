@@ -3,9 +3,10 @@
 #include "utils/opengl/buffer.hpp"
 
 #include <glad/glad.h>
-
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/ranges.h>
+
+#include <algorithm>
 
 
 namespace OpenGL

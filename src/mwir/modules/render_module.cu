@@ -1,5 +1,6 @@
 #include <optix.h>
 #include <optix_types.h>
+#include <curand_kernel.h>
 
 #include "utils.h"
 #include "vec_math.h"
@@ -10,156 +11,134 @@ extern "C"
     __constant__ Params params;
 }
 
-
-void __forceinline__ __device__ SetMiss()
+static __forceinline__ __device__ HField PropagatePhase(EField &efield, float distance, float wavenumber)
 {
-    unsigned int bitmask = optixGetPayload_0();
-    bitmask &= ~(1 << 0); // Clear the first bit
-    optixSetPayload_0(bitmask);
+    HField hfield;
+    float attenuation = 1 / (distance * distance);
+
+    float phase = wavenumber * distance;
+    float cos_phase = cos(phase);
+    float sin_phase = sin(phase);
+
+    hfield.x_re = attenuation * (efield.x_re * cos_phase - efield.x_im * sin_phase);
+    hfield.x_im = attenuation * (efield.x_re * sin_phase + efield.x_im * cos_phase);
+
+    hfield.y_re = attenuation * (efield.y_re * cos_phase - efield.y_im * sin_phase);
+    hfield.y_im = attenuation * (efield.y_re * sin_phase + efield.y_im * cos_phase);
+
+    hfield.z_re = attenuation * (efield.z_re * cos_phase - efield.z_im * sin_phase);
+    hfield.z_im = attenuation * (efield.z_re * sin_phase + efield.z_im * cos_phase);
+
+    return hfield;
 }
 
-static __forceinline__ __device__ void SetHit()
+
+static __forceinline__ __device__ float3 SampleDir(const AntennaData& sender, curandState& rand_state)
 {
-    unsigned int bitmask = optixGetPayload_0();
-    bitmask |= 1 << 0; // Set the first bit
-    optixSetPayload_0(bitmask);
+    float u = curand_uniform(&rand_state);
+    float v = curand_uniform(&rand_state);
+    float azimuth = sender.fov.x * (u - 0.5f);
+    float elevation = asin(sin(sender.fov.y / 2) * (2 * v - 1.0f));
+    float3 dir = make_float3(cos(azimuth) * cos(elevation), sin(azimuth) * cos(elevation), sin(elevation));
+    return dir;
 }
-
-void __forceinline__ __device__ SetPayload(const float3& position, const float3& normal)
-{
-    unsigned int x = __float_as_uint(position.x);
-    unsigned int y = __float_as_uint(position.y);
-    unsigned int z = __float_as_uint(position.z);
-    unsigned int nx = __float_as_uint(normal.x);
-    unsigned int ny = __float_as_uint(normal.y);
-    unsigned int nz = __float_as_uint(normal.z);
-
-    optixSetPayload_1(x);
-    optixSetPayload_2(y);
-    optixSetPayload_3(z);
-    optixSetPayload_4(nx);
-    optixSetPayload_5(ny);
-    optixSetPayload_6(nz);
-}
-
-static __forceinline__ __device__ void computeRay(uint3 idx, uint3 dim, float3& origin, float3& direction )
-{
-    AntennaData sender = params.d_senders[params.antenna_index];
-    
-    float factor_x = (params.grid_x * OPTIX_MAX_GRID_DIM + static_cast<float>( idx.x )) / static_cast<float>(sender.n_rays.x) - 0.5f;
-
-
-    float azimuth = sender.fov.x * factor_x;
-
-    float factor_y = (params.grid_y * OPTIX_MAX_GRID_DIM + static_cast<float>( idx.y )) / static_cast<float>(sender.n_rays.y)- 0.5f;
-    float elevation = sender.fov.y * factor_y;
-
-    // float sin_elevation = sin(sender.fov.y / 2) * 2 * (0.5f * (static_cast<float>( idx.y ) / static_cast<float>( dim.y - 1)) - 1.0f);
-    // float elevation = asin(sin_elevation);
-    // float elevation = sender.fov.y * ((params.grid_y * OPTIX_MAX_GRID_DIM + static_cast<float>( idx.y ) / static_cast<float>(sender.n_rays.y)) - 0.5f);
-    float3 dir = make_float3(cos(azimuth) * cos(elevation), sin(azimuth) *  cos(elevation), sin(elevation)); // direction in sensor coordinates
-
-    origin = sender.position;
-    // direction = sender.forward * dir.x + sender.left * dir.y + sender.up * dir.z; // direction in world coordinates via matmul
-    direction = dir;
-}
+    // // direction = sender.forward * dir.x + sender.left * dir.y + sender.up * dir.z; // direction in world coordinates via matmul
 
 extern "C" __global__ void __raygen__rg()
 {
     const uint3 idx = optixGetLaunchIndex();
     const uint3 dim = optixGetLaunchDimensions();
 
-    float3 ray_origin, ray_direction;
-    computeRay(idx, dim, ray_origin, ray_direction);
+    curandState rand_state;
+    curand_init(params.antenna_index, idx.x * dim.y + idx.y, 0, &rand_state);
 
-    unsigned int bitmask = 0;
-    unsigned int x_hit = 0, y_hit = 0, z_hit = 0;
-    unsigned int nx_hit = 0, ny_hit = 0, nz_hit = 0;
-    optixTrace( params.mesh_handle,
-                ray_origin,
-                ray_direction,
-                0.0f,          
-                1e16f,         
-                0.0f, 
-                OptixVisibilityMask( 255 ),
-                OPTIX_RAY_FLAG_NONE,
-                0,                  
-                0,     
-                0,          
-                bitmask,
-                x_hit,
-                y_hit,
-                z_hit,
-                nx_hit,
-                ny_hit,
-                nz_hit);
+    AntennaData sender = params.d_senders[params.antenna_index];
+    float3 p_tx = sender.position;
+    float3 dir_tx;
+    
+    for(int i = 0; i < sender.n_batches; i++)
+    {   
+        dir_tx = SampleDir(sender, rand_state);
 
-    float3 p_hit = make_float3(__uint_as_float( x_hit ), __uint_as_float( y_hit ), __uint_as_float( z_hit ));    
-    float3 n_hit = make_float3(__uint_as_float( nx_hit ), __uint_as_float( ny_hit ), __uint_as_float( nz_hit ));
-
-    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.n_receivers * params.signal.n_frequencies +
-                     idx.y * params.n_receivers * params.signal.n_frequencies;
-
-    // Hit surface
-    if( (bitmask & (1 << 0)) && dot(n_hit, ray_direction) < 0.0f)
-    {
-        for(int i = 0; i < params.n_receivers; i++)
-        {
-            int receiver_offset = ray_offset + i * params.signal.n_frequencies;
-            
-            AntennaData receiver = params.d_receivers[i];
-            float3 dir = normalize(receiver.position - p_hit);
-            
-            if(dot(dir, n_hit) <= 0.0f)
-            {
-                continue; 
-            }
-
-            unsigned int los_bitmask = 0;
-            optixTrace( params.mesh_handle,
-                        ray_origin,
-                        ray_direction,
-                        0.0f,          
-                        1e16f,         
-                        0.0f, 
-                        OptixVisibilityMask( 255 ),
-                        OPTIX_RAY_FLAG_NONE,
-                        0,                  
-                        0,     
-                        0,              
-                        los_bitmask);
-
-            if( (los_bitmask & (1 << 0)) == 0 )
-            {
-                continue; // No line of sight to the receiver
-            }
-
-            for(int j = 0; j < params.signal.n_frequencies; j++)
-            {
-                int result_index = receiver_offset + j;
-                params.result[result_index].x_re += 1.0f;
-                params.result[result_index].y_re += 1.0f;
-                params.result[result_index].z_re += 1.0f;
-            }
-        }
+        optixTrace( params.mesh_handle,
+                    p_tx,
+                    dir_tx,
+                    0.0f,          
+                    1e16f,         
+                    0.0f, 
+                    OptixVisibilityMask( 255 ),
+                    OPTIX_RAY_FLAG_NONE,
+                    0,                  
+                    0,     
+                    0);
     }
 }
 
 extern "C" __global__ void __miss__ms()
 {
-    SetMiss();
+    optixSetPayload_0(0);
 }
 
 extern "C" __global__ void __closesthit__ch()
 {
-    float3 position = optixGetWorldRayOrigin() + optixGetWorldRayDirection() * optixGetRayTmax();
-
+    float3 p_hit = optixGetWorldRayOrigin() + optixGetWorldRayDirection() * optixGetRayTmax();
     float3 vertices[3] = {};
     optixGetTriangleVertexData(optixGetGASTraversableHandle(), optixGetPrimitiveIndex(), optixGetSbtGASIndex(), 0, vertices );
-    float3 normal = normalize( cross( vertices[1] - vertices[0], vertices[2] - vertices[0] ) );
+    float3 n_hit = normalize( cross( vertices[1] - vertices[0], vertices[2] - vertices[0] ) );
 
+    if(dot(n_hit, optixGetWorldRayDirection()) >= 0.0f)
+    {
+        return;
+    }
 
-    SetHit();
-    SetPayload(position, normal);
+    const uint3 idx = optixGetLaunchIndex();
+    const uint3 dim = optixGetLaunchDimensions();
+    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.n_receivers * params.signal.n_frequencies +
+                    idx.y * params.n_receivers * params.signal.n_frequencies;
+    int receiver_offset;
+    int frequency_offset;
+
+    for(int i = 0; i < params.n_receivers; i++)
+    {
+        receiver_offset = ray_offset + i * params.signal.n_frequencies;
+        AntennaData receiver = params.d_receivers[i];
+        float3 dir_tx = normalize(receiver.position - p_hit);
+                
+        if(dot(dir_tx, n_hit) <= 0.0f)
+        {
+            continue; 
+        }
+        unsigned int bitmask = 1;
+        optixTrace( params.mesh_handle,
+                    p_hit + n_hit * 0.001f, 
+                    dir_tx,
+                    0.0f,          
+                    1e16f,         
+                    0.0f, 
+                    OptixVisibilityMask( 255 ),
+                    OPTIX_RAY_FLAG_NONE,
+                    0,                  
+                    0,     
+                    0,              
+                    bitmask);
+
+        if(bitmask == 1)
+        {
+            continue; 
+        }
+
+        float dist_rx = length(receiver.position - p_hit);
+        // float invariant_factor = 1e-7 * 2 * dist_rx / dot(-dir_tx, n_hit) * sender.ray_density;
+
+        for(int j = 0; j < params.signal.n_frequencies; j++)
+        {
+            // HField H_hit;
+            // float frequency = params.signal.frequency_range.x + j * params.signal.f_step;
+            int result_index = receiver_offset + j;
+            params.result[result_index].x_re += 1.0f;
+            params.result[result_index].y_re += 1.0f;
+            params.result[result_index].z_re += 1.0f;
+        }
+    }
 }
 

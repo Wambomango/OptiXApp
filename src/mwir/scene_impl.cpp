@@ -118,7 +118,8 @@ namespace MWIR
             h_senders[i].fov = float2{senders[i].GetFOV().x, senders[i].GetFOV().y};
             h_senders[i].ray_density = senders[i].GetRayDensity();
             h_senders[i].solid_angle = senders[i].GetSolidAngle();
-            h_senders[i].n_rays = int2{senders[i].GetNRays().x, senders[i].GetNRays().y};
+            h_senders[i].n_rays = senders[i].GetNRays();
+            h_senders[i].n_batches = senders[i].GetNBatches();
         }
 
         CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_senders), h_senders.data(), senders.size() * sizeof(AntennaData), cudaMemcpyHostToDevice));
@@ -150,7 +151,8 @@ namespace MWIR
             h_receivers[i].fov = float2{receivers[i].GetFOV().x, receivers[i].GetFOV().y};
             h_receivers[i].ray_density = receivers[i].GetRayDensity();
             h_receivers[i].solid_angle = receivers[i].GetSolidAngle();
-            h_receivers[i].n_rays = int2{receivers[i].GetNRays().x, receivers[i].GetNRays().y};
+            h_receivers[i].n_rays = receivers[i].GetNRays();
+            h_receivers[i].n_batches = receivers[i].GetNBatches();
         }
 
         CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_receivers), h_receivers.data(), receivers.size() * sizeof(AntennaData), cudaMemcpyHostToDevice));

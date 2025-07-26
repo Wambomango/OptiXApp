@@ -1,8 +1,9 @@
 #pragma once
 
 #include "types.h"
+#include "defines.h"
+#include <curand_kernel.h>
 
-#define OPTIX_MAX_GRID_DIM 256
 struct Params
 {    
     OptixTraversableHandle mesh_handle;
@@ -15,9 +16,9 @@ struct Params
     SignalData signal;
 
     int antenna_index;
-    int grid_x;
-    int grid_y;
     EField *result;
+
+    curandState *randstates;
 };
 
 struct RayGenData

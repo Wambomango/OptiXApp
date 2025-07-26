@@ -10,7 +10,7 @@ ForwardPipeline::ForwardPipeline()
     OptixModuleCompileOptions module_compile_options = {};
     OptixPipelineCompileOptions pipeline_compile_options = {.usesMotionBlur = false,
                                                             .traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS,
-                                                            .numPayloadValues = 7,
+                                                            .numPayloadValues = 2,
                                                             .numAttributeValues = 2,
                                                             .exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE,
                                                             .pipelineLaunchParamsVariableName = "params",

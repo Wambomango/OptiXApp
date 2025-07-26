@@ -9,7 +9,8 @@ struct AntennaData
     float2 fov;
     float solid_angle;
     float ray_density;
-    int2 n_rays;
+    int n_rays;
+    int n_batches;
 };
 
 struct SignalData
@@ -18,7 +19,6 @@ struct SignalData
     int n_frequencies;
     float f_step;
 };
-
 struct EField
 {
     float x_re;
@@ -31,3 +31,14 @@ struct EField
     float z_im;
 };
 
+struct HField
+{
+    float x_re;
+    float x_im;
+
+    float y_re;
+    float y_im;
+
+    float z_re;
+    float z_im;
+};

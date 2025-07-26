@@ -192,8 +192,8 @@ public:
             throw std::runtime_error("Antenna ownership has been transferred.");
         }
 
-        glm::ivec2 n_rays = mwir_antenna_->GetNRays();
-        return at::tensor({n_rays.x, n_rays.y}, torch::kInt32).view({2});
+        int n_rays = mwir_antenna_->GetNRays();
+        return at::tensor({n_rays}, torch::kInt32).view({1});
     }
 
 
