@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "vec_math.h"
 #include "render_module.h"
+#include "complex.h"
 
 extern "C"
 {
@@ -40,9 +41,9 @@ static __forceinline__ __device__ float3 SampleDir(const AntennaData& sender, cu
     float azimuth = sender.fov.x * (u - 0.5f);
     float elevation = asin(sin(sender.fov.y / 2) * (2 * v - 1.0f));
     float3 dir = make_float3(cos(azimuth) * cos(elevation), sin(azimuth) * cos(elevation), sin(elevation));
-    return dir;
+    return sender.forward * dir.x + sender.left * dir.y + sender.up * dir.z;
 }
-    // // direction = sender.forward * dir.x + sender.left * dir.y + sender.up * dir.z; // direction in world coordinates via matmul
+
 
 extern "C" __global__ void __raygen__rg()
 {
@@ -55,7 +56,8 @@ extern "C" __global__ void __raygen__rg()
     AntennaData sender = params.d_senders[params.antenna_index];
     float3 p_tx = sender.position;
     float3 dir_tx;
-    
+    unsigned int bitmask = 0;    
+
     for(int i = 0; i < sender.n_batches; i++)
     {   
         dir_tx = SampleDir(sender, rand_state);
@@ -70,13 +72,14 @@ extern "C" __global__ void __raygen__rg()
                     OPTIX_RAY_FLAG_NONE,
                     0,                  
                     0,     
-                    0);
+                    0,
+                    bitmask);
     }
 }
 
 extern "C" __global__ void __miss__ms()
 {
-    optixSetPayload_0(0);
+    optixSetPayload_0(1);
 }
 
 extern "C" __global__ void __closesthit__ch()
@@ -98,20 +101,44 @@ extern "C" __global__ void __closesthit__ch()
     int receiver_offset;
     int frequency_offset;
 
+    AntennaData sender = params.d_senders[params.antenna_index];
+    float3 pos_tx = sender.position;
+    float3 dir_tx = optixGetWorldRayDirection();
+    float dist_tx = length(p_hit - pos_tx);
+
+
+    (sender.ray_density * dist_tx) / (2 * M_PI * C0 * dot(-dir_tx, n_hit)); 
+   
+
+
+
+
+    // float factor_tx = MU0 * sender.ray_density / (2 * M_PI * dot(-dir_tx, n_hit));
+
+
+
+
+
+
+
+
+    float3 dir_rx;
+    float factor_rx;
     for(int i = 0; i < params.n_receivers; i++)
     {
         receiver_offset = ray_offset + i * params.signal.n_frequencies;
         AntennaData receiver = params.d_receivers[i];
-        float3 dir_tx = normalize(receiver.position - p_hit);
+        dir_rx = normalize(receiver.position - p_hit);
                 
-        if(dot(dir_tx, n_hit) <= 0.0f)
+        if(dot(dir_rx, n_hit) <= 0.0f)
         {
             continue; 
         }
-        unsigned int bitmask = 1;
+
+        unsigned int bitmask = 0;
         optixTrace( params.mesh_handle,
                     p_hit + n_hit * 0.001f, 
-                    dir_tx,
+                    dir_rx,
                     0.0f,          
                     1e16f,         
                     0.0f, 
@@ -122,13 +149,16 @@ extern "C" __global__ void __closesthit__ch()
                     0,              
                     bitmask);
 
-        if(bitmask == 1)
+        if(bitmask == 0)
         {
             continue; 
         }
 
-        float dist_rx = length(receiver.position - p_hit);
-        // float invariant_factor = 1e-7 * 2 * dist_rx / dot(-dir_tx, n_hit) * sender.ray_density;
+
+        // float dist_rx = length(receiver.position - p_hit);
+
+        // float invariant_factor =   * 2 * dist_rx / dot(-dir_tx, n_hit) * sender.ray_density;
+
 
         for(int j = 0; j < params.signal.n_frequencies; j++)
         {
