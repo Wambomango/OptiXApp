@@ -39,21 +39,35 @@ Renderer& Renderer::operator=(Renderer&& other) noexcept
 
 void Renderer::SetScene(Scene&& scene)
 {
-    if (impl)
+    if(!impl)
     {
-        impl->SetScene(std::move(*scene.impl));
-        scene.impl = nullptr;
+        throw std::runtime_error("Renderer ownership has been transferred");
     }
+
+    impl->SetScene(std::move(*scene.impl));
+    scene.impl = nullptr;
+}
+
+Scene Renderer::GetScene()
+{
+    if (!impl)
+    {
+        throw std::runtime_error("Renderer ownership is not initialized.");
+    }
+
+    Scene tmp(impl->GetScene());
+    return tmp;
 }
 
 at::Tensor Renderer::Render()
 {
-    if (impl)
+    if (!impl)
     {
-        return impl->Render();
+        throw std::runtime_error("Renderer ownership is not initialized.");
     }
-    return at::Tensor();
-} 
+    
+    return impl->Render();
+}
 
 
 

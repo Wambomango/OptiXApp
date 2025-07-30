@@ -16,17 +16,25 @@ namespace MWIR
 class SceneImpl
 {
 public:
+    SceneImpl();
     SceneImpl(MeshImpl &&mesh, std::vector<AntennaImpl> &&senders, std::vector<AntennaImpl> &&receivers, SignalImpl &&signal);
     ~SceneImpl();
     SceneImpl(const SceneImpl&) = delete;
     SceneImpl& operator=(const SceneImpl&) = delete;
-    SceneImpl(SceneImpl&&) = default;
-    SceneImpl& operator=(SceneImpl&&) = default;
+    SceneImpl(SceneImpl&&);
+    SceneImpl& operator=(SceneImpl&&);
 
     void SetMesh(MeshImpl &&mesh);
     void SetSenders(std::vector<AntennaImpl> &&senders);
     void SetReceivers(std::vector<AntennaImpl> &&receivers);
     void SetSignal(SignalImpl &&signal);
+
+    MeshImpl GetMesh();
+    std::vector<AntennaImpl> GetSenders();
+    std::vector<AntennaImpl> GetReceivers();
+    SignalImpl GetSignal();
+
+    int idx;
 
 protected:
     friend class RendererImpl;

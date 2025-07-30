@@ -83,7 +83,10 @@
       "__split_buffer": "cpp",
       "__tree": "cpp",
       "queue": "cpp",
-      "stack": "cpp"
+      "stack": "cpp",
+      "shared_mutex": "cpp",
+      "stdfloat": "cpp",
+      "text_encoding": "cpp"
     },
 
   "python.analysis.extraPaths": [

@@ -21,7 +21,9 @@ public:
     Renderer& operator=(Renderer&&) noexcept;
 
     void SetScene(Scene&& scene);
+    Scene GetScene();
     at::Tensor Render();
+
 
 private:
     RendererImpl *impl;

@@ -6,9 +6,9 @@
 
 #include "mwir/include/scene.hpp"
 
-#include "pymwir/mesh.hpp"
-#include "pymwir/antenna.hpp"
-#include "pymwir/signal.hpp"
+#include "pybindmwir/mesh.hpp"
+#include "pybindmwir/antenna.hpp"
+#include "pybindmwir/signal.hpp"
 
 namespace py = pybind11;
 
@@ -17,6 +17,16 @@ class Scene
 
 
 public:
+    Scene()
+    {
+        mwir_scene_ = std::make_unique<MWIR::Scene>();
+    }
+
+    Scene(MWIR::Scene &&mwir_scene)
+    {
+        mwir_scene_ = std::make_unique<MWIR::Scene>(std::move(mwir_scene));
+    }
+
     Scene(std::shared_ptr<Mesh> mesh, std::vector<std::shared_ptr<Antenna>> senders, std::vector<std::shared_ptr<Antenna>> receivers, std::shared_ptr<Signal> signal)
     {
         std::vector<MWIR::Antenna> senders_mwir;
@@ -45,7 +55,7 @@ public:
     {
         if (!mwir_scene_)
         {
-            throw std::runtime_error("Scene ownership has been transferred.");
+            throw std::runtime_error("Scene ownership has been transferred");
         }
 
         mwir_scene_->SetMesh(std::move(*mesh.mwir_mesh_));
@@ -56,7 +66,7 @@ public:
     {
         if (!mwir_scene_)
         {
-            throw std::runtime_error("Scene ownership has been transferred.");
+            throw std::runtime_error("Scene ownership has been transferred");
         }
 
         std::vector<MWIR::Antenna> senders_mwir;
@@ -72,7 +82,7 @@ public:
     {
         if (!mwir_scene_)
         {
-            throw std::runtime_error("Scene ownership has been transferred.");
+            throw std::runtime_error("Scene ownership has been transferred");
         }
 
         std::vector<MWIR::Antenna> receivers_mwir;
@@ -88,11 +98,65 @@ public:
     {
         if (!mwir_scene_)
         {
-            throw std::runtime_error("Scene ownership has been transferred.");
+            throw std::runtime_error("Scene ownership has been transferred");
         }
 
         mwir_scene_->SetSignal(std::move(*(signal->mwir_signal_)));
         signal->mwir_signal_.reset();
+    }
+
+    std::shared_ptr<Mesh> GetMesh()
+    {
+        if (!mwir_scene_)
+        {
+            throw std::runtime_error("Scene ownership has been transferred");
+        }
+
+        std::shared_ptr<Mesh> tmp = std::make_shared<Mesh>(mwir_scene_->GetMesh());
+        return tmp;
+    }
+
+    std::vector<std::shared_ptr<Antenna>> GetSenders()
+    {
+        if (!mwir_scene_)
+        {
+            throw std::runtime_error("Scene ownership has been transferred");
+        }
+
+        std::vector<MWIR::Antenna> senders_mwir = mwir_scene_->GetSenders();
+        std::vector<std::shared_ptr<Antenna>> senders;
+        for (auto& sender : senders_mwir)
+        {
+            senders.push_back(std::make_shared<Antenna>(std::move(sender)));
+        }
+        return senders;
+    }
+
+    std::vector<std::shared_ptr<Antenna>> GetReceivers()
+    {
+        if (!mwir_scene_)
+        {
+            throw std::runtime_error("Scene ownership has been transferred");
+        }
+
+        std::vector<MWIR::Antenna> receivers_mwir = mwir_scene_->GetReceivers();
+        std::vector<std::shared_ptr<Antenna>> receivers;
+        for (auto& receiver : receivers_mwir)
+        {
+            receivers.push_back(std::make_shared<Antenna>(std::move(receiver)));
+        }
+        return receivers;
+    }
+
+    std::shared_ptr<Signal> GetSignal()
+    {
+        if (!mwir_scene_)
+        {
+            throw std::runtime_error("Scene ownership has been transferred");
+        }
+
+        std::shared_ptr<Signal> tmp = std::make_shared<Signal>(mwir_scene_->GetSignal());
+        return tmp;
     }
 
 

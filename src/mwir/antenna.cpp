@@ -4,9 +4,19 @@
 namespace MWIR
 {
 
+Antenna::Antenna()
+{
+    impl = new AntennaImpl();
+}
+
 Antenna::Antenna(glm::vec3 position, glm::vec3 euler, glm::vec2 fov, float ray_density)
 {
     impl = new AntennaImpl(position, euler, fov, ray_density);
+}
+
+Antenna::Antenna(AntennaImpl &&antenna_impl)
+{
+    impl = new AntennaImpl(std::move(antenna_impl));
 }
 
 Antenna::~Antenna()

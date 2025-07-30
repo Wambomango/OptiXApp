@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <atomic>
 
 namespace MWIR
 {
@@ -11,7 +12,7 @@ namespace MWIR
 class MeshImpl
 {
     public:
-        MeshImpl(std::string path);
+        MeshImpl();
         MeshImpl(std::vector<glm::vec3> &&vertices);
         ~MeshImpl();
         MeshImpl(const MeshImpl&) = delete;

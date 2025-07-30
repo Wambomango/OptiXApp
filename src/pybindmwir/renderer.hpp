@@ -6,7 +6,9 @@
 
 #include "mwir/include/renderer.hpp"
 
-#include "pymwir/scene.hpp"
+#include "pybindmwir/scene.hpp"
+
+#include <spdlog/spdlog.h>
 
 namespace py = pybind11;
 
@@ -34,6 +36,16 @@ public:
 
         mwir_renderer_->SetScene(std::move(*(scene->mwir_scene_)));
         scene->mwir_scene_.reset();
+    }
+
+    std::shared_ptr<Scene> GetScene()
+    {
+        if (!mwir_renderer_)
+        {
+            throw std::runtime_error("Renderer ownership has been transferred.");
+        }
+        std::shared_ptr<Scene> scene = std::make_shared<Scene>(mwir_renderer_->GetScene());
+        return scene;
     }
 
     at::Tensor Render()

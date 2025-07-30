@@ -1,5 +1,6 @@
 #pragma once
 
+#include "complex.h"
 #include "types.h"
 #include "defines.h"
 #include <curand_kernel.h>
@@ -16,8 +17,9 @@ struct Params
     SignalData signal;
 
     int antenna_index;
-    EField *result;
+    complex3 *result;
 
+    int seed;
     curandState *randstates;
 };
 

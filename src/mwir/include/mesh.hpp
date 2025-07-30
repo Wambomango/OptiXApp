@@ -12,8 +12,9 @@ class Mesh
 {
 
 public:
-    Mesh(std::string path);
+    Mesh();
     Mesh(std::vector<glm::vec3> &&vertices);
+    Mesh(MeshImpl &&mesh_impl);
     ~Mesh();
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;

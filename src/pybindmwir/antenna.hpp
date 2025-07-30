@@ -12,57 +12,24 @@ class Antenna
 {
 
 public:
+    Antenna()
+    {
+        mwir_antenna_ = std::make_unique<MWIR::Antenna>();
+    }
+
+    Antenna(MWIR::Antenna &&mwir_antenna)
+    {
+        mwir_antenna_ = std::make_unique<MWIR::Antenna>(std::move(mwir_antenna));
+    }
+
     Antenna(at::Tensor &position, at::Tensor &euler, at::Tensor &fov, at::Tensor &ray_density)
     {
-        if (position.sizes() != std::vector<int64_t>{3})
-        {
-            throw std::invalid_argument("position must be a tensor of shape [3]");
-        }
-
-        if (euler.sizes() != std::vector<int64_t>{3})
-        {
-            throw std::invalid_argument("euler must be a tensor of shape [3]");
-        }
-
-        if (fov.sizes() != std::vector<int64_t>{2})
-        {
-            throw std::invalid_argument("fov must be a tensor of shape [2]");
-        }
-
-        if (ray_density.sizes() != std::vector<int64_t>{1})
-        {
-            throw std::invalid_argument("ray_density must be a tensor of shape [1]");
-        }
-
         mwir_antenna_ = std::make_unique<MWIR::Antenna>(
             glm::vec3(position[0].item<float>(), position[1].item<float>(), position[2].item<float>()),
             glm::vec3(euler[0].item<float>(), euler[1].item<float>(), euler[2].item<float>()),
             glm::vec2(fov[0].item<float>(), fov[1].item<float>()), ray_density[0].item<float>());
     }
-
-    Antenna(py::tuple position, py::tuple euler, py::tuple fov, float ray_density)
-    {
-        if (position.size() != 3)
-        {
-            throw std::invalid_argument("position must be a tuple of length 3");
-        }
-
-        if (euler.size() != 3)
-        {
-            throw std::invalid_argument("euler must be a tuple of length 3");
-        }
-
-        if (fov.size() != 2)
-        {
-            throw std::invalid_argument("fov must be a tuple of length 2");
-        }
-
-        mwir_antenna_ = std::make_unique<MWIR::Antenna>(
-            glm::vec3(position[0].cast<float>(), position[1].cast<float>(), position[2].cast<float>()),
-            glm::vec3(euler[0].cast<float>(), euler[1].cast<float>(), euler[2].cast<float>()),
-            glm::vec2(fov[0].cast<float>(), fov[1].cast<float>()), ray_density);
-    }
-
+ 
     ~Antenna()
     {
     }
@@ -74,11 +41,6 @@ public:
             throw std::runtime_error("Antenna ownership has been transferred.");
         }
 
-        if (position.sizes() != std::vector<int64_t>{3})
-        {
-            throw std::invalid_argument("position must be a tensor of shape [3]");
-        }
-        
         glm::vec3 pos = {position[0].item<float>(), position[1].item<float>(), position[2].item<float>()};
         mwir_antenna_->SetPosition(pos);
     } 
@@ -88,11 +50,6 @@ public:
         if (!mwir_antenna_)
         {
             throw std::runtime_error("Antenna ownership has been transferred.");
-        }
-
-        if (euler.sizes() != std::vector<int64_t>{3})
-        {
-            throw std::invalid_argument("euler must be a tensor of shape [3]");
         }
 
         glm::vec3 euler_vec = {euler[0].item<float>(), euler[1].item<float>(), euler[2].item<float>()};
@@ -106,11 +63,6 @@ public:
             throw std::runtime_error("Antenna ownership has been transferred.");
         }
 
-        if (fov.sizes() != std::vector<int64_t>{2})
-        {
-            throw std::invalid_argument("fov must be a tensor of shape [2]");
-        }
-
         glm::vec2 fov_vec = {fov[0].item<float>(), fov[1].item<float>()};
         mwir_antenna_->SetFOV(fov_vec);
     }
@@ -120,11 +72,6 @@ public:
         if (!mwir_antenna_)
         {
             throw std::runtime_error("Antenna ownership has been transferred.");
-        }
-
-        if (ray_density.sizes() != std::vector<int64_t>{1})
-        {
-            throw std::invalid_argument("ray_density must be a tensor of shape [1]");
         }
 
         mwir_antenna_->SetRayDensity(ray_density[0].item<float>());

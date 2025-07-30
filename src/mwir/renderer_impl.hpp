@@ -21,12 +21,12 @@ public:
     RendererImpl& operator=(RendererImpl&&) = default;
 
     void SetScene(SceneImpl &&scene);
+    SceneImpl GetScene();
     at::Tensor Render();
 
 private:
     void UpdateParams();
     void RenderAntenna(int sender_index);
-
 
     ForwardPipeline forward_pipeline;
     SceneImpl scene;
@@ -36,7 +36,7 @@ private:
     CUdeviceptr d_params = 0;
 
     int n_receivers = 0;
-    int n_frequencies = 0;
+    int n_samples = 0;
     int result_bytes = 0;
     CUdeviceptr d_results = 0;
 };

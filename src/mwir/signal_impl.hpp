@@ -8,6 +8,7 @@ namespace MWIR
 class SignalImpl
 {
 public:
+    SignalImpl();
     SignalImpl(glm::vec2 frequency_range, int n_samples);
     ~SignalImpl();
     SignalImpl(const SignalImpl&) = delete;
@@ -15,13 +16,14 @@ public:
     SignalImpl(SignalImpl&&) = default;
     SignalImpl& operator=(SignalImpl&&) = default;
 
+    void SetFrequencyRange(glm::vec2 frequency_range, int n_samples);
     glm::vec2 GetFrequencyRange() const;
-    int GetNFrequencies() const;
+    int GetNSamples() const;
     float GetFStep() const;
 
 private:
     glm::vec2 frequency_range;
-    int n_frequencies;
+    int n_samples;
     float f_step;
 }; 
 

@@ -2,11 +2,57 @@
 
 #include "utils/optix/utils.hpp"
 
+#include <spdlog/spdlog.h>
+
 namespace MWIR
 {
+    SceneImpl::SceneImpl()
+        : mesh(MeshImpl()), senders(std::vector<AntennaImpl>(1)), receivers(std::vector<AntennaImpl>(1)), signal(SignalImpl())
+    {
+    }
+
     SceneImpl::SceneImpl(MeshImpl &&mesh, std::vector<AntennaImpl> &&senders, std::vector<AntennaImpl> &&receivers, SignalImpl &&signal)
         : mesh(std::move(mesh)), senders(std::move(senders)), receivers(std::move(receivers)), signal(std::move(signal))
     {
+    }
+
+    SceneImpl::SceneImpl(SceneImpl&& other)
+        : mesh(std::move(other.mesh)), senders(std::move(other.senders)), receivers(std::move(other.receivers)), signal(std::move(other.signal)),
+          mesh_updated(other.mesh_updated), senders_updated(other.senders_updated), receivers_updated(other.receivers_updated), signal_updated(other.signal_updated),
+          mesh_handle(other.mesh_handle), d_mesh(other.d_mesh), h_senders(std::move(other.h_senders)), d_senders(other.d_senders),
+          h_receivers(std::move(other.h_receivers)), d_receivers(other.d_receivers)
+    {
+        other.mesh_handle = {};
+        other.d_mesh = 0;
+        other.d_senders = 0;
+        other.d_receivers = 0;
+    }
+
+    SceneImpl& SceneImpl::operator=(SceneImpl&& other)
+    {
+        if (this != &other)
+        {
+            mesh = std::move(other.mesh);
+            senders = std::move(other.senders);
+            receivers = std::move(other.receivers);
+            signal = std::move(other.signal);
+            mesh_updated = other.mesh_updated;
+            senders_updated = other.senders_updated;
+            receivers_updated = other.receivers_updated;
+            signal_updated = other.signal_updated;
+            mesh_handle = other.mesh_handle;
+            d_mesh = other.d_mesh;
+            h_senders = std::move(other.h_senders);
+            d_senders = other.d_senders;
+            h_receivers = std::move(other.h_receivers);
+            d_receivers = other.d_receivers;
+
+            other.mesh_handle = {};
+            other.d_mesh = 0;
+            other.d_senders = 0;
+            other.d_receivers = 0;
+        }
+        return *this;
     }
 
     SceneImpl::~SceneImpl()
@@ -40,6 +86,37 @@ namespace MWIR
         signal_updated = true;
     }
 
+    MeshImpl SceneImpl::GetMesh()
+    {
+        MeshImpl tmp = std::move(this->mesh);
+        this->mesh = MeshImpl();
+        mesh_updated = true;
+        return tmp;
+    }
+
+    std::vector<AntennaImpl> SceneImpl::GetSenders()
+    {
+        std::vector<AntennaImpl> tmp = std::move(this->senders);
+        this->senders = std::vector<AntennaImpl>(1);
+        senders_updated = true;
+        return tmp;
+    }
+    std::vector<AntennaImpl> SceneImpl::GetReceivers()
+    {
+        std::vector<AntennaImpl> tmp = std::move(this->receivers);
+        this->receivers = std::vector<AntennaImpl>(1);
+        receivers_updated = true;
+        return tmp;
+    }
+
+    SignalImpl SceneImpl::GetSignal()
+    {
+        SignalImpl tmp = std::move(this->signal);
+        this->signal = SignalImpl();
+        signal_updated = true;
+        return tmp;
+    }
+
     void SceneImpl::UpdateParams(Params &params)
     {
         OptiX::Context &ctx = Context::GetInstance();
@@ -49,6 +126,9 @@ namespace MWIR
         UpdateSenders(params);
         UpdateReceivers(params);
         UpdateSignal(params);
+        
+        srand(static_cast<unsigned int>(time(nullptr)));
+        params.seed = rand() % 1000;
     }
     
     void SceneImpl::UpdateMesh(Params &params)
@@ -171,7 +251,7 @@ namespace MWIR
         signal_updated = false;
    
         params.signal.frequency_range = float2{signal.GetFrequencyRange().x, signal.GetFrequencyRange().y};
-        params.signal.n_frequencies = signal.GetNFrequencies();
+        params.signal.n_samples = signal.GetNSamples();
         params.signal.f_step = signal.GetFStep();
     }
 }

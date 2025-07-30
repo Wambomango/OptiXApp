@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vec_math.h"
+
 struct AntennaData
 {
     float3 position;
@@ -16,29 +18,6 @@ struct AntennaData
 struct SignalData
 {
     float2 frequency_range;
-    int n_frequencies;
+    int n_samples;
     float f_step;
-};
-struct EField
-{
-    float x_re;
-    float x_im;
-
-    float y_re;
-    float y_im;
-
-    float z_re;
-    float z_im;
-};
-
-struct HField
-{
-    float x_re;
-    float x_im;
-
-    float y_re;
-    float y_im;
-
-    float z_re;
-    float z_im;
 };

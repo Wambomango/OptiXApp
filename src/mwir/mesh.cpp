@@ -1,17 +1,24 @@
 #include "mwir/include/mesh.hpp"
 #include "mwir/mesh_impl.hpp"
 
+#include <spdlog/spdlog.h>
+
 namespace MWIR
 {
 
-Mesh::Mesh(std::string path)
+Mesh::Mesh()
 {
-    impl = new MeshImpl(path);
+    impl = new MeshImpl();
 }
 
 Mesh::Mesh(std::vector<glm::vec3> &&vertices)
 {
     impl = new MeshImpl(std::move(vertices));
+}
+
+Mesh::Mesh(MeshImpl &&mesh_impl)
+{
+    impl = new MeshImpl(std::move(mesh_impl));
 }
 
 Mesh::~Mesh()
@@ -43,21 +50,22 @@ Mesh& Mesh::operator=(Mesh&& other) noexcept
 
 void Mesh::SetVertices(std::vector<glm::vec3> &&vertices)
 {
-    if(impl)
+    if (!impl)
     {
-        impl->SetVertices(std::move(vertices));
+        throw std::runtime_error("Mesh ownership has been moved");
     }
+
+    impl->SetVertices(std::move(vertices));
 }
 
 const std::vector<glm::vec3>& Mesh::GetVertices() const
 {
-    if(impl)
+    if (!impl)
     {
-        return impl->GetVertices();
+        throw std::runtime_error("Mesh ownership has been moved");
     }
-    
-    static const std::vector<glm::vec3> emptyVertices;
-    return emptyVertices;
+
+    return impl->GetVertices();
 }
 
 }

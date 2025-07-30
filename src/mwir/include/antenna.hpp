@@ -11,7 +11,9 @@ class Antenna
 {
 
 public:
+    Antenna();
     Antenna(glm::vec3 position, glm::vec3 euler, glm::vec2 fov, float ray_density);
+    Antenna(AntennaImpl &&antenna_impl);
     ~Antenna();    
     Antenna(const Antenna&) = delete;
     Antenna& operator=(const Antenna&) = delete;

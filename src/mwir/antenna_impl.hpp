@@ -9,6 +9,7 @@ namespace MWIR
 class AntennaImpl
 {
     public:
+        AntennaImpl();
         AntennaImpl(glm::vec3 position, glm::vec3 euler, glm::vec2 fov, float ray_density);
         ~AntennaImpl();
         AntennaImpl(const AntennaImpl&) = delete;

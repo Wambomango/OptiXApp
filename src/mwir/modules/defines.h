@@ -4,5 +4,6 @@
 #define MU0 4 * M_PI * 1e-7f
 #define EPS0 8.854187817e-12f
 #define C0 299792458.0f
+#define INV_C0 3.33564095e-9f
 
-#define M_PI 3.14159265358979323846f
+#define PI 3.14159265358979323846f

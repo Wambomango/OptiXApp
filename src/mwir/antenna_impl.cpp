@@ -6,6 +6,13 @@
 
 namespace MWIR
 {
+
+    AntennaImpl::AntennaImpl()
+        : position(0.0f), euler(0.0f), fov(1.0f, 1.0f), ray_density(1.0f)
+    {
+        UpdateParameters();
+    }
+
     AntennaImpl::AntennaImpl(glm::vec3 position, glm::vec3 euler, glm::vec2 fov, float ray_density)
         : position(position), euler(euler), fov(fov), ray_density(ray_density)
     {

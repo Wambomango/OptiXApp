@@ -4,10 +4,20 @@
 namespace MWIR
 {
 
+
+Signal::Signal()
+{
+    impl = new SignalImpl();
+}
+
 Signal::Signal(glm::vec2 frequency_range, int n_samples)
 {
     impl = new SignalImpl(frequency_range, n_samples);
+}
 
+Signal::Signal(SignalImpl &&signal_impl)
+{
+    impl = new SignalImpl(std::move(signal_impl));
 }
 
 Signal::~Signal()
@@ -37,6 +47,15 @@ Signal& Signal::operator=(Signal&& other) noexcept
     return *this;
 }
 
+
+void Signal::SetFrequencyRange(glm::vec2 frequency_range, int n_samples)
+{
+    if (impl)
+    {
+        impl->SetFrequencyRange(frequency_range, n_samples);
+    }
+}
+
 glm::vec2 Signal::GetFrequencyRange() const
 {
     if (impl)
@@ -47,11 +66,11 @@ glm::vec2 Signal::GetFrequencyRange() const
     return glm::vec2(0.0f, 0.0f);
 }
 
-int Signal::GetNFrequencies() const
+int Signal::GetNSamples() const
 {
     if (impl)
     {
-        return impl->GetNFrequencies();
+        return impl->GetNSamples();
     }
     return 0;
 }
