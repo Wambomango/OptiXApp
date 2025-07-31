@@ -37,6 +37,7 @@ public:
 
 protected:
     friend class ForwardRenderer;
+    friend class InverseRenderer;
     SceneImpl *impl;
 
 };

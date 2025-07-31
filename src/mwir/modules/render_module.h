@@ -5,8 +5,9 @@
 #include "defines.h"
 #include <curand_kernel.h>
 
-struct Params
-{    
+
+struct SceneParams
+{
     OptixTraversableHandle mesh_handle;
     unsigned int n_senders;
     AntennaData *h_senders;
@@ -15,6 +16,18 @@ struct Params
     AntennaData *h_receivers;
     AntennaData *d_receivers;
     SignalData signal;
+};
+
+
+struct ManyWorldsParams
+{
+};
+
+
+struct Params
+{    
+    SceneParams scene;
+    ManyWorldsParams many_worlds;
 
     int antenna_index;
     complex3 *result;

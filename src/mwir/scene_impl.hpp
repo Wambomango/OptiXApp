@@ -38,13 +38,14 @@ public:
 
 protected:
     friend class ForwardRendererImpl;
-    void UpdateParams(Params &params);
+    friend class InverseRendererImpl;
+    SceneParams GetParams();
 
 private:
-    void UpdateMesh(Params &params);
-    void UpdateSenders(Params &params);
-    void UpdateReceivers(Params &params);
-    void UpdateSignal(Params &params);
+    void UpdateMesh();
+    void UpdateSenders();
+    void UpdateReceivers();
+    void UpdateSignal();
 
     MeshImpl mesh;
     std::vector<AntennaImpl> senders;
@@ -55,6 +56,7 @@ private:
     bool senders_updated = true;
     bool receivers_updated = true;
     bool signal_updated = true;
+    SceneParams params;
 
     OptixTraversableHandle mesh_handle;
     CUdeviceptr d_mesh = 0;

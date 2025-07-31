@@ -4,10 +4,9 @@
 namespace MWIR
 {
 
-ForwardRenderer::ForwardRenderer(Scene &&scene)
+ForwardRenderer::ForwardRenderer()
 {
-    impl = new ForwardRendererImpl(std::move(*scene.impl));
-    scene.impl = nullptr;
+    impl = new ForwardRendererImpl();
 }
 
 ForwardRenderer::~ForwardRenderer()
@@ -37,39 +36,14 @@ ForwardRenderer& ForwardRenderer::operator=(ForwardRenderer&& other) noexcept
     return *this;
 }
 
-void ForwardRenderer::SetScene(Scene&& scene)
-{
-    if(!impl)
-    {
-        throw std::runtime_error("ForwardRenderer ownership has been transferred");
-    }
-
-    impl->SetScene(std::move(*scene.impl));
-    scene.impl = nullptr;
-}
-
-Scene ForwardRenderer::GetScene()
+at::Tensor ForwardRenderer::Render(Scene &scene, std::optional<at::Tensor> result_tensor)
 {
     if (!impl)
     {
         throw std::runtime_error("ForwardRenderer ownership is not initialized.");
     }
 
-    Scene tmp(impl->GetScene());
-    return tmp;
+    return impl->Render(*scene.impl, result_tensor);
 }
-
-at::Tensor ForwardRenderer::Render()
-{
-    if (!impl)
-    {
-        throw std::runtime_error("ForwardRenderer ownership is not initialized.");
-    }
-    
-    return impl->Render();
-}
-
-
-
 
 }

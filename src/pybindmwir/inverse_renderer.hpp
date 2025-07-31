@@ -4,7 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "mwir/include/forward_renderer.hpp"
+#include "mwir/include/inverse_renderer.hpp"
 
 #include "pybindmwir/scene.hpp"
 
@@ -12,17 +12,17 @@
 
 namespace py = pybind11;
 
-class ForwardRenderer
+class InverseRenderer
 {
 
 public:
 
-    ForwardRenderer()
+    InverseRenderer()
     {
-        mwir_renderer_ = std::make_unique<MWIR::ForwardRenderer>();
+        mwir_renderer_ = std::make_unique<MWIR::InverseRenderer>();
     }
- 
-    ~ForwardRenderer()
+
+    ~InverseRenderer()
     {
     }
 
@@ -30,7 +30,7 @@ public:
     {
         if (!mwir_renderer_)
         {
-            throw std::runtime_error("ForwardRenderer ownership has been transferred.");
+            throw std::runtime_error("InverseRenderer ownership has been transferred.");
         }
 
         return mwir_renderer_->Render(*scene->mwir_scene_, result_tensor);
@@ -38,6 +38,6 @@ public:
 
 
 private:
-    std::unique_ptr<MWIR::ForwardRenderer> mwir_renderer_;
+    std::unique_ptr<MWIR::InverseRenderer> mwir_renderer_;
 };
 

@@ -16,46 +16,46 @@ class Antenna:
 
     def SetPosition(self, position):
         if self.antenna is None:
-            raise ValueError("internal antenna instance has been moved.")
+            raise ValueError("Antenna ownership has been transferred")
         position = self.__SetPosition(position)
         self.antenna.SetPosition(position)
 
     def SetEuler(self, euler):
         if self.antenna is None:
-            raise ValueError("internal antenna instance has been moved.")
+            raise ValueError("Antenna ownership has been transferred")
         euler = self.__SetEuler(euler)
         self.antenna.SetEuler(euler)
 
     def SetFOV(self, fov):
         if self.antenna is None:
-            raise ValueError("internal antenna instance has been moved.")
+            raise ValueError("Antenna ownership has been transferred")
         fov = self.__SetFOV(fov)
         self.antenna.SetFOV(fov)
 
     def SetRayDensity(self, ray_density):
         if self.antenna is None:
-            raise ValueError("internal antenna instance has been moved.")
+            raise ValueError("Antenna ownership has been transferred")
         ray_density = self.__SetRayDensity(ray_density)
         self.antenna.SetRayDensity(ray_density)
 
     def GetPosition(self):
         if self.antenna is None:
-            raise ValueError("internal antenna instance has been moved.")
+            raise ValueError("Antenna ownership has been transferred")
         return self.antenna.GetPosition()
     
     def GetOrientation(self):
         if self.antenna is None:
-            raise ValueError("internal antenna instance has been moved.")
+            raise ValueError("Antenna ownership has been transferred")
         return self.antenna.GetOrientation()
     
     def GetFOV(self):
         if self.antenna is None:
-            raise ValueError("internal antenna instance has been moved.")
+            raise ValueError("Antenna ownership has been transferred")
         return self.antenna.GetFOV()
 
     def GetRayDensity(self):
         if self.antenna is None:
-            raise ValueError("internal antenna instance has been moved.")
+            raise ValueError("Antenna ownership has been transferred")
         return self.antenna.GetRayDensity()
 
     def __SetPosition(self, position):

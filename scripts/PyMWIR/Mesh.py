@@ -13,13 +13,13 @@ class Mesh:
 
     def SetVertices(self, vertices):
         if self.mesh is None:
-            raise ValueError("internal mesh instance has been moved.")
+            raise ValueError("Mesh ownership has been transferred")
         vertices = self.__SetVertices(vertices)
         self.mesh.SetVertices(vertices)
        
     def GetVertices(self):
         if self.mesh is None:
-            raise ValueError("internal mesh instance has been moved.")
+            raise ValueError("Mesh ownership has been transferred")
         return self.mesh.GetVertices()
     
     def __SetVertices(self, vertices):

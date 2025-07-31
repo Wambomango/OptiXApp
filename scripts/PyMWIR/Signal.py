@@ -13,23 +13,23 @@ class Signal:
 
     def SetFrequencyRange(self, frequency_range, n_samples):
         if self.signal is None:
-            raise ValueError("internal signal instance has been moved.")
+            raise ValueError("Signal ownership has been transferred")
         frequency_range, n_samples = self.__SetFrequencyRange(frequency_range, n_samples)
         self.signal.SetFrequencyRange(frequency_range, n_samples)
 
     def GetFrequencyRange(self):
         if self.signal is None:
-            raise ValueError("internal signal instance has been moved.")
+            raise ValueError("Signal ownership has been transferred")
         return self.signal.GetFrequencyRange()
     
     def GetNSamples(self):
         if self.signal is None:
-            raise ValueError("internal signal instance has been moved.")
+            raise ValueError("Signal ownership has been transferred")
         return self.signal.GetNSamples()
     
     def GetFStep(self):
         if self.signal is None:
-            raise ValueError("internal signal instance has been moved.")
+            raise ValueError("Signal ownership has been transferred")
         return self.signal.GetFStep()
 
 

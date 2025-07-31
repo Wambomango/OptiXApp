@@ -162,6 +162,7 @@ public:
 
 protected:
     friend class ForwardRenderer;
+    friend class InverseRenderer;
     std::unique_ptr<MWIR::Scene> mwir_scene_;
 };
 

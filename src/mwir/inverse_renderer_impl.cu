@@ -1,11 +1,11 @@
-#include "mwir/forward_renderer_impl.hpp"
+#include "mwir/inverse_renderer_impl.hpp"
 
-__global__ void FWSetAntenna(Params *params, int antenna_index)
+__global__ void INVSetAntenna(Params *params, int antenna_index)
 {
     params->antenna_index = antenna_index;
 }
 
-__global__ void FWMergeResults(Params *params, complex3 *result)
+__global__ void INVMergeResults(Params *params, complex3 *result)
 {
     __shared__ complex3 shared_result[OPTIX_MAX_GRID_DIM];
 
@@ -41,14 +41,14 @@ __global__ void FWMergeResults(Params *params, complex3 *result)
 namespace MWIR
 {
 
-ForwardRendererImpl::ForwardRendererImpl() : forward_pipeline()
+InverseRendererImpl::InverseRendererImpl() : inverse_pipeline()
 {    
     OptiX::Context &ctx = Context::GetInstance();
     CUDA_CHECK(cudaStreamCreate(&stream));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_params), sizeof(Params)));
 }
 
-ForwardRendererImpl::~ForwardRendererImpl()
+InverseRendererImpl::~InverseRendererImpl()
 {
     CUDA_CHECK(cudaStreamSynchronize(stream));
     CUDA_CHECK(cudaStreamDestroy(stream));
@@ -56,7 +56,7 @@ ForwardRendererImpl::~ForwardRendererImpl()
     CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_results)));
 }
 
-at::Tensor ForwardRendererImpl::Render(SceneImpl &scene, std::optional<at::Tensor> opt_result_tensor)
+at::Tensor InverseRendererImpl::Render(SceneImpl &scene, std::optional<at::Tensor> opt_result_tensor)
 {   
     UpdateParams(scene);
     at::Tensor result_tensor = AllocateResultTensor(opt_result_tensor);
@@ -67,14 +67,14 @@ at::Tensor ForwardRendererImpl::Render(SceneImpl &scene, std::optional<at::Tenso
         RenderAntenna(i);
     }
 
-    FWMergeResults<<<dim3(params.scene.n_receivers, params.scene.signal.n_samples, 1), OPTIX_MAX_GRID_DIM, sizeof(complex3) * OPTIX_MAX_GRID_DIM, stream>>>(reinterpret_cast<Params *>(d_params), static_cast<complex3 *>(result_tensor.data_ptr()));
+    INVMergeResults<<<dim3(params.scene.n_receivers, params.scene.signal.n_samples, 1), OPTIX_MAX_GRID_DIM, sizeof(complex3) * OPTIX_MAX_GRID_DIM, stream>>>(reinterpret_cast<Params *>(d_params), static_cast<complex3 *>(result_tensor.data_ptr()));
     CUDA_CHECK(cudaStreamSynchronize(stream));
 
     SPDLOG_INFO("Finished rendering");
     return result_tensor;
 }
 
-void ForwardRendererImpl::UpdateParams(SceneImpl &scene)
+void InverseRendererImpl::UpdateParams(SceneImpl &scene)
 {
     params.scene = scene.GetParams();
     int new_n_receivers = params.scene.n_receivers;
@@ -94,7 +94,7 @@ void ForwardRendererImpl::UpdateParams(SceneImpl &scene)
     CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(d_params), &params, sizeof(Params), cudaMemcpyHostToDevice, stream));
 }
 
-at::Tensor ForwardRendererImpl::AllocateResultTensor(std::optional<at::Tensor> opt_result_tensor)
+at::Tensor InverseRendererImpl::AllocateResultTensor(std::optional<at::Tensor> opt_result_tensor)
 {
     at::Tensor result_tensor;
     if(opt_result_tensor.has_value())
@@ -124,11 +124,11 @@ at::Tensor ForwardRendererImpl::AllocateResultTensor(std::optional<at::Tensor> o
     return result_tensor;
 }
 
-void ForwardRendererImpl::RenderAntenna(int sender_index)
+void InverseRendererImpl::RenderAntenna(int sender_index)
 {
     SPDLOG_INFO("Rendering antenna {} with {} rays", sender_index, params.scene.h_senders[sender_index].n_rays);
-    FWSetAntenna<<<1, 1, 0, stream>>>(reinterpret_cast<Params *>(d_params), sender_index);
-    OPTIX_CHECK(optixLaunch(forward_pipeline.pipeline->Handle(), stream, d_params, sizeof(Params), &forward_pipeline.sbt, OPTIX_MAX_GRID_DIM, OPTIX_MAX_GRID_DIM, 1));
+    INVSetAntenna<<<1, 1, 0, stream>>>(reinterpret_cast<Params *>(d_params), sender_index);
+    OPTIX_CHECK(optixLaunch(inverse_pipeline.pipeline->Handle(), stream, d_params, sizeof(Params), &inverse_pipeline.sbt, OPTIX_MAX_GRID_DIM, OPTIX_MAX_GRID_DIM, 1));
 }
 
 

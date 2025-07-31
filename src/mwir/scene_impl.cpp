@@ -17,7 +17,7 @@ namespace MWIR
     }
 
     SceneImpl::SceneImpl(SceneImpl&& other)
-        : mesh(std::move(other.mesh)), senders(std::move(other.senders)), receivers(std::move(other.receivers)), signal(std::move(other.signal)),
+        : mesh(std::move(other.mesh)), senders(std::move(other.senders)), receivers(std::move(other.receivers)), signal(std::move(other.signal)), params(std::move(other.params)),
           mesh_updated(other.mesh_updated), senders_updated(other.senders_updated), receivers_updated(other.receivers_updated), signal_updated(other.signal_updated),
           mesh_handle(other.mesh_handle), d_mesh(other.d_mesh), h_senders(std::move(other.h_senders)), d_senders(other.d_senders),
           h_receivers(std::move(other.h_receivers)), d_receivers(other.d_receivers)
@@ -36,6 +36,7 @@ namespace MWIR
             senders = std::move(other.senders);
             receivers = std::move(other.receivers);
             signal = std::move(other.signal);
+            params = std::move(other.params);
             mesh_updated = other.mesh_updated;
             senders_updated = other.senders_updated;
             receivers_updated = other.receivers_updated;
@@ -47,7 +48,6 @@ namespace MWIR
             h_receivers = std::move(other.h_receivers);
             d_receivers = other.d_receivers;
 
-            other.mesh_handle = {};
             other.d_mesh = 0;
             other.d_senders = 0;
             other.d_receivers = 0;
@@ -117,21 +117,16 @@ namespace MWIR
         return tmp;
     }
 
-    void SceneImpl::UpdateParams(Params &params)
+    SceneParams SceneImpl::GetParams()
     {
-        OptiX::Context &ctx = Context::GetInstance();
-        CUDA_CHECK(cudaFree(0));
-
-        UpdateMesh(params);
-        UpdateSenders(params);
-        UpdateReceivers(params);
-        UpdateSignal(params);
-        
-        srand(static_cast<unsigned int>(time(nullptr)));
-        params.seed = rand() % 1000;
+        UpdateMesh();
+        UpdateSenders();
+        UpdateReceivers();
+        UpdateSignal();
+        return params;
     }
     
-    void SceneImpl::UpdateMesh(Params &params)
+    void SceneImpl::UpdateMesh()
     {
         if (!mesh_updated)
         {
@@ -176,7 +171,7 @@ namespace MWIR
         params.mesh_handle = mesh_handle;
     }
     
-    void SceneImpl::UpdateSenders(Params &params)
+    void SceneImpl::UpdateSenders()
     {
         if (!senders_updated)
         {
@@ -209,7 +204,7 @@ namespace MWIR
         params.h_senders = h_senders.data();
     }
 
-    void SceneImpl::UpdateReceivers(Params &params)
+    void SceneImpl::UpdateReceivers()
     {
         if (!receivers_updated)
         {
@@ -242,7 +237,7 @@ namespace MWIR
         params.d_receivers = reinterpret_cast<AntennaData *>(d_receivers);
     }
 
-    void SceneImpl::UpdateSignal(Params &params)
+    void SceneImpl::UpdateSignal()
     {
         if (!signal_updated)
         {

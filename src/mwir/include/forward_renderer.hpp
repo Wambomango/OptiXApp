@@ -13,16 +13,14 @@ class ForwardRenderer
 {
 
 public:
-    ForwardRenderer(Scene &&scene);
+    ForwardRenderer();
     ~ForwardRenderer();    
     ForwardRenderer(const ForwardRenderer&) = delete;
     ForwardRenderer& operator=(const ForwardRenderer&) = delete;
     ForwardRenderer(ForwardRenderer&&) noexcept;
     ForwardRenderer& operator=(ForwardRenderer&&) noexcept;
 
-    void SetScene(Scene&& scene);
-    Scene GetScene();
-    at::Tensor Render();
+    at::Tensor Render(Scene &scene, std::optional<at::Tensor> result_tensor = std::nullopt);
 
 
 private:

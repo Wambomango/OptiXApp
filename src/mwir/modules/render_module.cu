@@ -32,7 +32,7 @@ extern "C" __global__ void __raygen__rg()
     curandState rand_state;
     curand_init(params.seed + params.antenna_index, idx.x * dim.y + idx.y, 0, &rand_state);
 
-    AntennaData sender = params.d_senders[params.antenna_index];
+    AntennaData sender = params.scene.d_senders[params.antenna_index];
     float3 p_tx = sender.position;
     float3 dir_tx;
     unsigned int bitmask = 0;    
@@ -41,7 +41,7 @@ extern "C" __global__ void __raygen__rg()
     {   
         dir_tx = SampleDir(sender, rand_state);
 
-        optixTrace( params.mesh_handle,
+        optixTrace( params.scene.mesh_handle,
                     p_tx,
                     dir_tx,
                     0.0f,          
@@ -76,11 +76,11 @@ extern "C" __global__ void __closesthit__ch()
         return;
     }
 
-    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.n_receivers * params.signal.n_samples +
-                    idx.y * params.n_receivers * params.signal.n_samples;
+    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples +
+                    idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
     int receiver_offset;
 
-    AntennaData sender = params.d_senders[params.antenna_index];
+    AntennaData sender = params.scene.d_senders[params.antenna_index];
     float3 pos_tx = sender.position;
     float3 dir_tx = optixGetWorldRayDirection();
     float dist_tx = length(p_hit - pos_tx);
@@ -98,10 +98,10 @@ extern "C" __global__ void __closesthit__ch()
     float3 vec_rx;
     complex3 A_rx;
     complex3 E_rx;
-    for(int i = 0; i < params.n_receivers; i++)
+    for(int i = 0; i < params.scene.n_receivers; i++)
     {
-        receiver_offset = ray_offset + i * params.signal.n_samples;
-        receiver = params.d_receivers[i];
+        receiver_offset = ray_offset + i * params.scene.signal.n_samples;
+        receiver = params.scene.d_receivers[i];
         dir_rx = normalize(receiver.position - p_hit);
                 
         if(dot(dir_rx, n_hit) <= 0.0f)
@@ -110,7 +110,7 @@ extern "C" __global__ void __closesthit__ch()
         }
         
         bitmask = 0;
-        optixTrace( params.mesh_handle,
+        optixTrace( params.scene.mesh_handle,
                     p_hit + n_hit * 0.001f, 
                     dir_rx,
                     0.0f,          
@@ -131,9 +131,9 @@ extern "C" __global__ void __closesthit__ch()
         dist_total = dist_tx + dist_rx;
         vec_rx = vec_tx / dist_rx;
 
-        for(int j = 0; j < params.signal.n_samples; j++)
+        for(int j = 0; j < params.scene.signal.n_samples; j++)
         {
-            minusjomega = make_complex(0.0f, -(params.signal.frequency_range.x + j * params.signal.f_step));
+            minusjomega = make_complex(0.0f, -(params.scene.signal.frequency_range.x + j * params.scene.signal.f_step));
             A_rx = vec_rx * expf(minusjomega * INV_C0 * dist_total);
             E_rx = minusjomega * A_rx;
             E_rx = E_rx - dot(E_rx, dir_rx) * dir_rx;

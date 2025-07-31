@@ -19,37 +19,37 @@ class Scene:
 
     def SetMesh(self, mesh):
         if self.scene is None:
-            raise ValueError("internal scene instance has been moved.")
+            raise ValueError("Scene ownership has been transferred")
         mesh = self.__SetMesh(mesh)
         self.scene.SetMesh(mesh)
 
     def SetSenders(self, senders):
         if self.scene is None:
-            raise ValueError("internal scene instance has been moved.")
+            raise ValueError("Scene ownership has been transferred")
         senders = self.__SetSenders(senders)
         self.scene.SetSenders(senders)
 
     def SetReceivers(self, receivers):
         if self.scene is None:
-            raise ValueError("internal scene instance has been moved.")
+            raise ValueError("Scene ownership has been transferred")
         receivers = self.__SetReceivers(receivers)
         self.scene.SetReceivers(receivers)
 
     def SetSignal(self, signal):
         if self.scene is None:
-            raise ValueError("internal scene instance has been moved.")
+            raise ValueError("Scene ownership has been transferred")
         signal = self.__SetSignal(signal)
         self.scene.SetSignal(signal)
 
     def GetMesh(self):
         if self.scene is None:
-            raise ValueError("internal scene instance has been moved.")
+            raise ValueError("Scene ownership has been transferred")
         tmp = Mesh(None, self.scene.GetMesh())
         return tmp
 
     def GetSenders(self):
         if self.scene is None:
-            raise ValueError("internal scene instance has been moved.")
+            raise ValueError("Scene ownership has been transferred")
         tmp = self.scene.GetSenders()
         senders = []
         for i in range(len(tmp)):
@@ -58,7 +58,7 @@ class Scene:
 
     def GetReceivers(self):
         if self.scene is None:
-            raise ValueError("internal scene instance has been moved.")
+            raise ValueError("Scene ownership has been transferred")
         tmp = self.scene.GetReceivers()
         receivers = []
         for i in range(len(tmp)):
@@ -67,7 +67,7 @@ class Scene:
 
     def GetSignal(self):
         if self.scene is None:
-            raise ValueError("internal scene instance has been moved.")
+            raise ValueError("Scene ownership has been transferred")
         tmp = Signal(None, None, self.scene.GetSignal())
         return tmp
 

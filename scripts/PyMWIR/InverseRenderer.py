@@ -5,16 +5,15 @@ from . import Antenna
 from . import Signal
 from . import Scene
 
-class ForwardRenderer:
-    def __init__(self, scene = None):
-        scene = self.__SetScene(scene)
-        self.forward_renderer = PyBindMWIR.ForwardRenderer(scene)
+class InverseRenderer:
+    def __init__(self):
+        self.inverse_renderer = PyBindMWIR.InverseRenderer()
 
     def Render(self, scene, output=None):
-        if self.forward_renderer is None:
+        if self.inverse_renderer is None:
             raise ValueError("InverseRenderer ownership has been transferred")
         if type(scene) is not Scene:
             raise TypeError("scene must be of type Scene")
         if output is not None and type(output) is not torch.Tensor:
             raise TypeError("output must be a torch.Tensor or None")
-        return self.forward_renderer.Render(scene.scene, output)
+        return self.inverse_renderer.Render(scene.scene, output)

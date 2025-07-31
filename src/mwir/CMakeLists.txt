@@ -12,6 +12,10 @@ get_target_property(OPTIX_INCLUDE_DIR OptiX INCLUDE_DIRECTORIES)
 add_library(MWIR SHARED forward_renderer_impl.cu
                         forward_renderer.cpp
                         forward_pipeline.cpp
+                        inverse_renderer_impl.cu
+                        inverse_renderer.cpp
+                        inverse_pipeline.cpp
+                        function_table_definition.cu
                         scene_impl.cpp
                         scene.cpp
                         mesh_impl.cpp

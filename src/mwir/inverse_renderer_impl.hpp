@@ -1,24 +1,24 @@
 #pragma once
 
 #include "mwir/scene_impl.hpp"
-#include "mwir/forward_pipeline.hpp"
+#include "mwir/inverse_pipeline.hpp"
 
 #include <torch/torch.h>
 
 namespace MWIR
 {
 
-class ForwardRendererImpl 
+class InverseRendererImpl 
 {
 
 public:
 
-    ForwardRendererImpl();
-    ~ForwardRendererImpl();    
-    ForwardRendererImpl(const ForwardRendererImpl&) = delete;
-    ForwardRendererImpl& operator=(const ForwardRendererImpl&) = delete;
-    ForwardRendererImpl(ForwardRendererImpl&&) = default;
-    ForwardRendererImpl& operator=(ForwardRendererImpl&&) = default;
+    InverseRendererImpl();
+    ~InverseRendererImpl();    
+    InverseRendererImpl(const InverseRendererImpl&) = delete;
+    InverseRendererImpl& operator=(const InverseRendererImpl&) = delete;
+    InverseRendererImpl(InverseRendererImpl&&) = default;
+    InverseRendererImpl& operator=(InverseRendererImpl&&) = default;
 
     at::Tensor Render(SceneImpl &scene, std::optional<at::Tensor> result_tensor = std::nullopt);
 
@@ -27,7 +27,7 @@ private:
     at::Tensor AllocateResultTensor(std::optional<at::Tensor> result_tensor);
     void RenderAntenna(int sender_index);
 
-    ForwardPipeline forward_pipeline;
+    InversePipeline inverse_pipeline;
     CUstream stream;
 
     Params params;
