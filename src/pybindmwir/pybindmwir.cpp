@@ -5,7 +5,7 @@
 
 #include "pybindmwir/antenna.hpp"
 #include "pybindmwir/mesh.hpp"
-#include "pybindmwir/renderer.hpp"
+#include "pybindmwir/forward_renderer.hpp"
 #include "pybindmwir/scene.hpp"
 #include "pybindmwir/signal.hpp"
 
@@ -34,11 +34,11 @@ PYBIND11_MODULE(PyBindMWIR, m)
         .def("SetVertices", &Mesh::SetVertices)
         .def("GetVertices", &Mesh::GetVertices);
 
-    py::class_<Renderer, std::shared_ptr<Renderer>>(m, "Renderer")
+    py::class_<ForwardRenderer, std::shared_ptr<ForwardRenderer>>(m, "ForwardRenderer")
         .def(py::init<std::shared_ptr<Scene>>())
-        .def("SetScene", &Renderer::SetScene)
-        .def("GetScene", &Renderer::GetScene)
-        .def("Render", &Renderer::Render);
+        .def("SetScene", &ForwardRenderer::SetScene)
+        .def("GetScene", &ForwardRenderer::GetScene)
+        .def("Render", &ForwardRenderer::Render);
 
     py::class_<Scene, std::shared_ptr<Scene>>(m, "Scene")
         .def(py::init<>())

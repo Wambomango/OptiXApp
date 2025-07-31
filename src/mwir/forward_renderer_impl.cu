@@ -1,4 +1,4 @@
-#include "mwir/renderer_impl.hpp"
+#include "mwir/forward_renderer_impl.hpp"
 
 #include <optix_function_table_definition.h>
 
@@ -44,14 +44,14 @@ __global__ void MergeResults(Params *params, complex3 *result)
 namespace MWIR
 {
 
-RendererImpl::RendererImpl(SceneImpl &&scene) : forward_pipeline(), scene(std::move(scene))
+ForwardRendererImpl::ForwardRendererImpl(SceneImpl &&scene) : forward_pipeline(), scene(std::move(scene))
 {    
     CUDA_CHECK(cudaStreamCreate(&stream));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_params), sizeof(Params)));
     UpdateParams();
 }
 
-RendererImpl::~RendererImpl()
+ForwardRendererImpl::~ForwardRendererImpl()
 {
     CUDA_CHECK(cudaStreamSynchronize(stream));
     CUDA_CHECK(cudaStreamDestroy(stream));
@@ -59,20 +59,20 @@ RendererImpl::~RendererImpl()
     CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_results)));
 }
 
-void RendererImpl::SetScene(SceneImpl &&scene)
+void ForwardRendererImpl::SetScene(SceneImpl &&scene)
 {
     this->scene = std::move(scene);
     UpdateParams();
 }
 
-SceneImpl RendererImpl::GetScene()
+SceneImpl ForwardRendererImpl::GetScene()
 {
     SceneImpl tmp = std::move(scene);
     scene = SceneImpl();
     return tmp;
 }
 
-at::Tensor RendererImpl::Render()
+at::Tensor ForwardRendererImpl::Render()
 {   
     at::Tensor result_tensor = at::empty({n_receivers, n_samples, 3}, at::dtype(at::kComplexFloat).device(at::kCUDA, 0));
 
@@ -88,7 +88,7 @@ at::Tensor RendererImpl::Render()
     return result_tensor;
 }
 
-void RendererImpl::UpdateParams()
+void ForwardRendererImpl::UpdateParams()
 {
     scene.UpdateParams(params);
 
@@ -107,7 +107,7 @@ void RendererImpl::UpdateParams()
     CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(d_params), &params, sizeof(Params), cudaMemcpyHostToDevice, stream));
 }
 
-void RendererImpl::RenderAntenna(int sender_index)
+void ForwardRendererImpl::RenderAntenna(int sender_index)
 {
     SPDLOG_INFO("Rendering antenna {} with {} rays", sender_index, params.h_senders[sender_index].n_rays);
     SetAntenna<<<1, 1, 0, stream>>>(reinterpret_cast<Params *>(d_params), sender_index);

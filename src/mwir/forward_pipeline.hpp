@@ -25,7 +25,7 @@ public:
     void Render(int n_rays, int batch_size);
     
 protected:
-    friend class RendererImpl;
+    friend class ForwardRendererImpl;
 
     std::unique_ptr<OptiX::Module> module;
     std::unique_ptr<OptiX::ProgramGroup> raygen_prog_group;

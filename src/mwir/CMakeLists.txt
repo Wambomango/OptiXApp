@@ -9,8 +9,8 @@ SET(MWIR_LIBS   spdlog::spdlog
 
 get_target_property(OPTIX_INCLUDE_DIR OptiX INCLUDE_DIRECTORIES)
 
-add_library(MWIR SHARED renderer_impl.cu
-                        renderer.cpp
+add_library(MWIR SHARED forward_renderer_impl.cu
+                        forward_renderer.cpp
                         forward_pipeline.cpp
                         scene_impl.cpp
                         scene.cpp

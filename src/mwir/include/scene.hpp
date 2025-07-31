@@ -36,7 +36,7 @@ public:
     Signal GetSignal();
 
 protected:
-    friend class Renderer;
+    friend class ForwardRenderer;
     SceneImpl *impl;
 
 };

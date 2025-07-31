@@ -8,17 +8,17 @@
 namespace MWIR
 {
 
-class RendererImpl 
+class ForwardRendererImpl 
 {
 
 public:
 
-    RendererImpl(SceneImpl &&scene);
-    ~RendererImpl();    
-    RendererImpl(const RendererImpl&) = delete;
-    RendererImpl& operator=(const RendererImpl&) = delete;
-    RendererImpl(RendererImpl&&) = default;
-    RendererImpl& operator=(RendererImpl&&) = default;
+    ForwardRendererImpl(SceneImpl &&scene);
+    ~ForwardRendererImpl();    
+    ForwardRendererImpl(const ForwardRendererImpl&) = delete;
+    ForwardRendererImpl& operator=(const ForwardRendererImpl&) = delete;
+    ForwardRendererImpl(ForwardRendererImpl&&) = default;
+    ForwardRendererImpl& operator=(ForwardRendererImpl&&) = default;
 
     void SetScene(SceneImpl &&scene);
     SceneImpl GetScene();

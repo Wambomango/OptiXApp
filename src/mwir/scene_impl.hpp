@@ -37,7 +37,7 @@ public:
     int idx;
 
 protected:
-    friend class RendererImpl;
+    friend class ForwardRendererImpl;
     void UpdateParams(Params &params);
 
 private:

@@ -5,26 +5,26 @@ from . import Antenna
 from . import Signal
 from . import Scene
 
-class Renderer:
+class ForwardRenderer:
     def __init__(self, scene = None):
         scene = self.__SetScene(scene)
-        self.renderer = PyBindMWIR.Renderer(scene)
+        self.forward_renderer = PyBindMWIR.ForwardRenderer(scene)
 
     def Render(self):
-        if self.renderer is None:
+        if self.forward_renderer is None:
             raise ValueError("internal renderer instance has been moved.")
-        return self.renderer.Render()
+        return self.forward_renderer.Render()
 
     def SetScene(self, scene):
-        if self.renderer is None:
+        if self.forward_renderer is None:
             raise ValueError("internal renderer instance has been moved.")
         scene = self.__SetScene(scene)
-        self.renderer.SetScene(scene)
+        self.forward_renderer.SetScene(scene)
 
     def GetScene(self):
-        if self.renderer is None:
+        if self.forward_renderer is None:
             raise ValueError("internal renderer instance has been moved.")
-        return Scene(None, None, None, None, self.renderer.GetScene())
+        return Scene(None, None, None, None, self.forward_renderer.GetScene())
 
     def __SetScene(self, scene):
         if scene is None:

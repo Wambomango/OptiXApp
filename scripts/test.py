@@ -12,7 +12,7 @@ sender = mwir.Antenna((0, 0, 0), (0, 0, 0), (0.10, 0.10), 1E9)
 receiver = mwir.Antenna((0, 0, 0), (0, 0, 0), (0.10, 0.10), 1E9)
 signal = mwir.Signal((2 * torch.pi * 10e9, 2 * torch.pi * 10e9), 1)
 scene = mwir.Scene(None, [sender], [receiver], signal)
-renderer = mwir.Renderer(scene)
+renderer = mwir.ForwardRenderer(scene)
 
 n_angles = 1000
 angles = torch.linspace(-10, 10, n_angles) * torch.pi / 180

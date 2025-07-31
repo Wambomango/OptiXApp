@@ -161,7 +161,7 @@ public:
 
 
 protected:
-    friend class Renderer;
+    friend class ForwardRenderer;
     std::unique_ptr<MWIR::Scene> mwir_scene_;
 };
 
