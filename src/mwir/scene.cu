@@ -134,7 +134,7 @@ namespace MWIR
         {
             vertices = vertices.cuda();
         }
-        CUdeviceptr d_vertices = CUdeviceptr((n_vertices == 0) ? nullptr : vertices.data_ptr());
+        CUdeviceptr d_vertices = CUdeviceptr(vertices.data_ptr());
 
         OptixAccelBuildOptions accel_options = {};
         accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_RANDOM_VERTEX_ACCESS;
@@ -145,7 +145,7 @@ namespace MWIR
         triangle_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
         triangle_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
         triangle_input.triangleArray.numVertices = n_vertices;
-        triangle_input.triangleArray.vertexBuffers = &d_vertices;
+        triangle_input.triangleArray.vertexBuffers = (n_vertices == 0) ? nullptr : &d_vertices;
         triangle_input.triangleArray.flags = triangle_input_flags;
         triangle_input.triangleArray.numSbtRecords = 1;
 
@@ -160,46 +160,6 @@ namespace MWIR
                                     data->d_mesh, mesh_buffer_sizes.outputSizeInBytes, &data->mesh_handle, nullptr, 0));
 
         CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_temp_buffer_gas)));
-
-
-
-
-
-
-
-
-
-
-        // const std::vector<glm::vec3>& vertices = data->mesh.GetVertices();
-        // CUdeviceptr d_vertices = 0;
-        // CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_vertices), vertices.size() * sizeof(glm::vec3)));
-        // CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_vertices), &vertices[0], vertices.size() * sizeof(glm::vec3), cudaMemcpyHostToDevice));
-
-        // OptixAccelBuildOptions accel_options = {};
-        // accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_RANDOM_VERTEX_ACCESS;
-        // accel_options.operation = OPTIX_BUILD_OPERATION_BUILD;
-
-        // const uint32_t triangle_input_flags[1] = {OPTIX_GEOMETRY_FLAG_NONE};
-        // OptixBuildInput triangle_input = {};
-        // triangle_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
-        // triangle_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-        // triangle_input.triangleArray.numVertices = vertices.size();
-        // triangle_input.triangleArray.vertexBuffers = (d_vertices == 0) ? nullptr :&d_vertices;
-        // triangle_input.triangleArray.flags = triangle_input_flags;
-        // triangle_input.triangleArray.numSbtRecords = 1;
-
-        // OptixAccelBufferSizes mesh_buffer_sizes;
-        // OPTIX_CHECK(optixAccelComputeMemoryUsage(ctx.Handle(), &accel_options, &triangle_input, 1,  &mesh_buffer_sizes));
-
-        // CUdeviceptr d_temp_buffer_gas;
-        // CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_temp_buffer_gas), mesh_buffer_sizes.tempSizeInBytes));
-        // CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&data->d_mesh), mesh_buffer_sizes.outputSizeInBytes));
-
-        // OPTIX_CHECK(optixAccelBuild(ctx.Handle(), 0, &accel_options, &triangle_input, 1, d_temp_buffer_gas, mesh_buffer_sizes.tempSizeInBytes, 
-        //                             data->d_mesh, mesh_buffer_sizes.outputSizeInBytes, &mesh_handle, nullptr, 0));
-
-        // CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_temp_buffer_gas)));
-        // CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_vertices)));
 
         data->params.mesh_handle = data->mesh_handle;
     }

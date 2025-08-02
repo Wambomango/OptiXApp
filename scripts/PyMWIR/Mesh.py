@@ -4,7 +4,7 @@ from . import PyBindMWIR
 class Mesh:
     def __init__(self, vertices = torch.zeros((0, 3), dtype=torch.float32), impl = None):
         if impl is None:
-            vertices = self.SetVertices(vertices)
+            vertices = self.__SetVertices(vertices)
             self.mesh = PyBindMWIR.Mesh(vertices)
         elif type(impl) is PyBindMWIR.Mesh:
             self.mesh = impl

@@ -37,19 +37,15 @@ public:
         std::vector<MWIR::Antenna> senders_mwir;
         for (auto& sender : senders)
         {
-            senders_mwir.push_back(std::move(*(sender->mwir_antenna_)));
-            sender->mwir_antenna_.reset();
+            senders_mwir.push_back(*(sender->mwir_antenna_));
         }
         std::vector<MWIR::Antenna> receivers_mwir;
         for (auto& receiver : receivers)
         {
-            receivers_mwir.push_back(std::move(*(receiver->mwir_antenna_)));
-            receiver->mwir_antenna_.reset();
+            receivers_mwir.push_back(*(receiver->mwir_antenna_));
         }
 
-        mwir_scene_ = std::make_unique<MWIR::Scene>(std::move(*(mesh->mwir_mesh_)), std::move(senders_mwir), std::move(receivers_mwir), std::move(*(signal->mwir_signal_)));
-        mesh->mwir_mesh_.reset();
-        signal->mwir_signal_.reset();
+        mwir_scene_ = std::make_unique<MWIR::Scene>(*(mesh->mwir_mesh_), senders_mwir, receivers_mwir, *(signal->mwir_signal_));
     }
 
     Scene Clone() const
