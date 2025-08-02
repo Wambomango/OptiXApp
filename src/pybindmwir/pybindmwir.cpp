@@ -4,6 +4,7 @@
 #include <pybind11/stl.h>
 
 #include "pybindmwir/antenna.hpp"
+#include "pybindmwir/many_worlds.hpp"
 #include "pybindmwir/mesh.hpp"
 #include "pybindmwir/forward_renderer.hpp"
 #include "pybindmwir/inverse_renderer.hpp"
@@ -17,7 +18,8 @@ PYBIND11_MODULE(PyBindMWIR, m)
 
     py::class_<Antenna, std::shared_ptr<Antenna>>(m, "Antenna")
         .def(py::init<>())
-        .def(py::init<at::Tensor&, at::Tensor&, at::Tensor&, at::Tensor&>())
+        .def(py::init<torch::Tensor&, torch::Tensor&, torch::Tensor&, torch::Tensor&>())
+        .def("Clone", &Antenna::Clone)
         .def("SetPosition", &Antenna::SetPosition)
         .def("SetOrientation", &Antenna::SetOrientation)
         .def("SetFOV", &Antenna::SetFOV)
@@ -29,9 +31,24 @@ PYBIND11_MODULE(PyBindMWIR, m)
         .def("GetSolidAngle", &Antenna::GetSolidAngle)
         .def("GetNRays", &Antenna::GetNRays);
 
+    py::class_<ManyWorlds, std::shared_ptr<ManyWorlds>>(m, "ManyWorlds")
+        .def(py::init<>())
+        .def(py::init<torch::Tensor&, torch::Tensor&, float>())
+        .def("Clone", &ManyWorlds::Clone)
+        .def("SetMin", &ManyWorlds::SetMin)
+        .def("SetMax", &ManyWorlds::SetMax)
+        .def("SetResolution", &ManyWorlds::SetResolution)
+        .def("GetMin", &ManyWorlds::GetMin)
+        .def("GetMax", &ManyWorlds::GetMax)
+        .def("GetResolution", &ManyWorlds::GetResolution)
+        .def("GetOccupancy", &ManyWorlds::GetOccupancy)
+        .def("GetNormal", &ManyWorlds::GetNormal)
+        .def("UpdateNormals", &ManyWorlds::UpdateNormals);
+
     py::class_<Mesh, std::shared_ptr<Mesh>>(m, "Mesh")
         .def(py::init<>())
         .def(py::init<torch::Tensor&>())
+        .def("Clone", &Mesh::Clone)
         .def("SetVertices", &Mesh::SetVertices)
         .def("GetVertices", &Mesh::GetVertices);
 
@@ -46,6 +63,7 @@ PYBIND11_MODULE(PyBindMWIR, m)
     py::class_<Scene, std::shared_ptr<Scene>>(m, "Scene")
         .def(py::init<>())
         .def(py::init<std::shared_ptr<Mesh>, std::vector<std::shared_ptr<Antenna>>, std::vector<std::shared_ptr<Antenna>>, std::shared_ptr<Signal>>())
+        .def("Clone", &Scene::Clone)
         .def("SetMesh", &Scene::SetMesh)
         .def("SetSenders", &Scene::SetSenders)
         .def("SetReceivers", &Scene::SetReceivers)
@@ -58,6 +76,7 @@ PYBIND11_MODULE(PyBindMWIR, m)
     py::class_<Signal, std::shared_ptr<Signal>>(m, "Signal")
         .def(py::init<>())
         .def(py::init<torch::Tensor&, torch::Tensor&>())
+        .def("Clone", &Signal::Clone)
         .def("SetFrequencyRange", &Signal::SetFrequencyRange)
         .def("GetFrequencyRange", &Signal::GetFrequencyRange)
         .def("GetNSamples", &Signal::GetNSamples)

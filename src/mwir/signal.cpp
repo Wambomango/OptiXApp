@@ -1,87 +1,82 @@
-#include "mwir/include/signal.hpp"
-#include "mwir/signal_impl.hpp"
+#include "mwir/signal.hpp"
+
+#include <stdexcept>
+
 
 namespace MWIR
 {
 
-
-Signal::Signal()
+Signal::Signal(std::optional<glm::vec2> frequency_range, std::optional<int> n_samples)
 {
-    impl = new SignalImpl();
+    data = std::make_shared<SignalData>();
+    SetFrequencyRange(frequency_range, n_samples);
 }
 
-Signal::Signal(glm::vec2 frequency_range, int n_samples)
+Signal Signal::Clone() const
 {
-    impl = new SignalImpl(frequency_range, n_samples);
+    return Signal(data->frequency_range, data->n_samples);
 }
 
-Signal::Signal(SignalImpl &&signal_impl)
+void Signal::SetFrequencyRange(std::optional<glm::vec2> frequency_range, std::optional<int> n_samples)
 {
-    impl = new SignalImpl(std::move(signal_impl));
-}
-
-Signal::~Signal()
-{
-    if (impl)
+    if(frequency_range.has_value()) 
     {
-        delete impl;
-    }
-}
-
-Signal::Signal(Signal&& other) noexcept : impl(std::move(other.impl))
-{
-    other.impl = nullptr; 
-} 
-
-Signal& Signal::operator=(Signal&& other) noexcept
-{
-    if (this != &other)
-    {
-        if (impl)
+        if(frequency_range->x > frequency_range->y) 
         {
-            delete impl; 
+            throw std::invalid_argument("Frequency range start must be less than or equal to end.");
         }
-        impl = other.impl; 
-        other.impl = nullptr; 
-    }
-    return *this;
-}
-
-
-void Signal::SetFrequencyRange(glm::vec2 frequency_range, int n_samples)
-{
-    if (impl)
+        data->frequency_range = frequency_range.value();
+    } 
+    else 
     {
-        impl->SetFrequencyRange(frequency_range, n_samples);
+        data->frequency_range =  glm::vec2(1E9, 1E9);
+    }
+    data->frequency_range *= 2 * M_PI;
+
+    if(n_samples.has_value()) 
+    {
+        if(n_samples.value() < 1) 
+        {
+            throw std::invalid_argument("Number of samples must be at least 1.");
+        }
+        data->n_samples = n_samples.value();
+    } 
+    else 
+    {
+        data->n_samples = 1;
+    }
+
+    if(data->n_samples == 1) 
+    {
+        if(data->frequency_range.x == data->frequency_range.y) 
+        {
+            data->f_step = 0.0f;
+        } 
+        else 
+        {
+            throw std::invalid_argument("Frequency range must match for a single frequency.");
+        }
+    } 
+    else 
+    {
+        data->f_step = (data->frequency_range.y - data->frequency_range.x) / static_cast<float>(data->n_samples - 1);
     }
 }
 
 glm::vec2 Signal::GetFrequencyRange() const
 {
-    if (impl)
-    {
-        return impl->GetFrequencyRange();
-    }
-
-    return glm::vec2(0.0f, 0.0f);
+    return data->frequency_range;
 }
 
-int Signal::GetNSamples() const
+int Signal::GetNSamples() const 
 {
-    if (impl)
-    {
-        return impl->GetNSamples();
-    }
-    return 0;
+    return data->n_samples;
 }
 
-float Signal::GetFStep() const
+float Signal::GetFStep() const 
 {
-    if (impl)
-    {
-        return impl->GetFStep();
-    }
-    return 0.0f;
+    return data->f_step;
 }
 
-}
+
+} 

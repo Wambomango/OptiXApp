@@ -4,7 +4,7 @@
 #include "types.h"
 #include "defines.h"
 #include <curand_kernel.h>
-
+#include <optix_types.h>
 
 struct SceneParams
 {

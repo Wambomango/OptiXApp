@@ -5,7 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "mwir/include/signal.hpp"
+#include "mwir/signal.hpp"
 
 namespace py = pybind11;
 
@@ -15,12 +15,17 @@ class Signal
 public:
     Signal()
     {
-        mwir_signal_ = std::make_unique<MWIR::Signal>();
+        mwir_signal_ = std::make_unique<MWIR::Signal>(std::nullopt, std::nullopt);
     }
 
-    Signal(MWIR::Signal &&mwir_signal)
+    Signal(std::unique_ptr<MWIR::Signal> &&impl)
     {
-        mwir_signal_ = std::make_unique<MWIR::Signal>(std::move(mwir_signal));
+        if (!impl)
+        {
+            throw std::invalid_argument("Signal implementation cannot be null.");
+        }
+
+        mwir_signal_ = std::move(impl);
     }
 
     Signal(const torch::Tensor &frequency_range, const torch::Tensor &n_samples)
@@ -28,10 +33,16 @@ public:
         mwir_signal_ = std::make_unique<MWIR::Signal>(glm::vec2(frequency_range[0].item<float>(), frequency_range[1].item<float>()), n_samples[0].item<int>());
     }
 
-    ~Signal()
-    {
-    }
 
+    Signal Clone() const
+    {
+        if (!mwir_signal_)
+        {
+            throw std::runtime_error("Signal ownership has been transferred.");
+        }
+
+        return Signal(std::move(std::make_unique<MWIR::Signal>(mwir_signal_->Clone())));
+    }
 
     void SetFrequencyRange(const torch::Tensor &frequency_range, const torch::Tensor &n_samples)
     {

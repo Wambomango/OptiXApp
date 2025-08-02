@@ -5,11 +5,44 @@ class ManyWorlds:
     def __init__(self, extent = torch.tensor([[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1]]), resolution = 0.001, impl = None):
         extent = self.__SetExtent(extent)
         resolution = self.__SetResolution(resolution)
+        self.many_worlds = PyBindMWIR.ManyWorlds(extent, resolution)
+
+    def SetExtent(self, extent):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        extent = self.__SetExtent(extent)
+        self.many_worlds.SetExtent(extent)
+
+    def SetResolution(self, resolution):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        resolution = self.__SetResolution(resolution)
+        self.many_worlds.SetResolution(resolution)
+
+    def GetExtent(self):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        return self.many_worlds.GetExtent()
     
-        # self.occupancy = torch.zeros((int((extent[0, 1] - extent[0, 0]) / resolution),
-        #                               int((extent[1, 1] - extent[1, 0]) / resolution),
-        #                               int((extent[2, 1] - extent[2, 0]) / resolution)),
-        #                              dtype=torch.float32)
+    def GetResolution(self):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        return self.many_worlds.GetResolution()
+
+    def GetOccupancy(self):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        return self.many_worlds.GetOccupancy()
+    
+    def GetNormal(self):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        return self.many_worlds.GetNormal()
+
+    def UpdateNormals(self):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        self.many_worlds.UpdateNormals()
 
     def GenerateMesh(self):
         pass

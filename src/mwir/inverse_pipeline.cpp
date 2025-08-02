@@ -50,8 +50,5 @@ InversePipeline::InversePipeline()
     sbt.hitgroupRecordCount = 1;                                             
 }
 
-InversePipeline::~InversePipeline()
-{
-}
 
 }

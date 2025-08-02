@@ -1,71 +1,34 @@
-#include "mwir/include/mesh.hpp"
-#include "mwir/mesh_impl.hpp"
-
+#include "mwir/mesh.hpp"
 #include <spdlog/spdlog.h>
 
 namespace MWIR
 {
 
-Mesh::Mesh()
+Mesh::Mesh(std::optional<torch::Tensor> vertices)
 {
-    impl = new MeshImpl();
+    SetVertices(vertices);
 }
 
-Mesh::Mesh(std::vector<glm::vec3> &&vertices)
+Mesh Mesh::Clone() const
 {
-    impl = new MeshImpl(std::move(vertices));
+    return Mesh(vertices.clone());
 }
 
-Mesh::Mesh(MeshImpl &&mesh_impl)
+void Mesh::SetVertices(std::optional<torch::Tensor> vertices)
 {
-    impl = new MeshImpl(std::move(mesh_impl));
-}
-
-Mesh::~Mesh()
-{
-    if(impl)
+    if (vertices.has_value())
     {
-        delete impl;
+        this->vertices = vertices.value();
+    }
+    else
+    {
+        this->vertices = torch::empty({0, 3}, torch::kFloat);
     }
 }
 
-Mesh::Mesh(Mesh&& other) noexcept : impl(std::move(other.impl))
+torch::Tensor Mesh::GetVertices() const
 {
-    other.impl = nullptr; 
-}
-
-Mesh& Mesh::operator=(Mesh&& other) noexcept
-{
-    if (this != &other)
-    {
-        if(impl)
-        {
-            delete impl; 
-        }
-        impl = other.impl; 
-        other.impl = nullptr; 
-    }
-    return *this;
-}
-
-void Mesh::SetVertices(std::vector<glm::vec3> &&vertices)
-{
-    if (!impl)
-    {
-        throw std::runtime_error("Mesh ownership has been moved");
-    }
-
-    impl->SetVertices(std::move(vertices));
-}
-
-const std::vector<glm::vec3>& Mesh::GetVertices() const
-{
-    if (!impl)
-    {
-        throw std::runtime_error("Mesh ownership has been moved");
-    }
-
-    return impl->GetVertices();
+    return vertices;
 }
 
 }

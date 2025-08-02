@@ -16,16 +16,9 @@ class ForwardPipeline
 
 public:
     ForwardPipeline();
-    ~ForwardPipeline();
-    ForwardPipeline(const ForwardPipeline&) = delete;
-    ForwardPipeline& operator=(const ForwardPipeline&) = delete;
-    ForwardPipeline(ForwardPipeline&&) = default;
-    ForwardPipeline& operator=(ForwardPipeline&&) = default;
 
-    void Render(int n_rays, int batch_size);
-    
 protected:
-    friend class ForwardRendererImpl;
+    friend class ForwardRenderer;
 
     std::unique_ptr<OptiX::Module> module;
     std::unique_ptr<OptiX::ProgramGroup> raygen_prog_group;

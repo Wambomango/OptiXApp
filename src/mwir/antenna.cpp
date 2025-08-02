@@ -1,144 +1,134 @@
-#include "mwir/include/antenna.hpp"
-#include "mwir/antenna_impl.hpp"
+#include "mwir/antenna.hpp"
+
+#include "mwir/modules/defines.h"
+
 
 namespace MWIR
 {
 
-Antenna::Antenna()
+Antenna::Antenna(std::optional<glm::vec3> position, std::optional<glm::vec3> euler, std::optional<glm::vec2> fov, std::optional<float> ray_density)
 {
-    impl = new AntennaImpl();
+    data = std::make_shared<AntennaData>();
+    SetPosition(position);
+    SetOrientation(euler);
+    SetFOV(fov);
+    SetRayDensity(ray_density);        
+    UpdateParameters();
 }
 
-Antenna::Antenna(glm::vec3 position, glm::vec3 euler, glm::vec2 fov, float ray_density)
+Antenna Antenna::Clone() const
 {
-    impl = new AntennaImpl(position, euler, fov, ray_density);
+    return Antenna(data->position, data->euler, data->fov, data->ray_density);
 }
 
-Antenna::Antenna(AntennaImpl &&antenna_impl)
+void Antenna::SetPosition(std::optional<glm::vec3> position)
 {
-    impl = new AntennaImpl(std::move(antenna_impl));
-}
-
-Antenna::~Antenna()
-{
-    if(impl)
+    if (position.has_value())
     {
-        delete impl;
+        data->position = position.value();
+    }
+    else
+    {
+        data->position = glm::vec3(0.0f, 0.0f, 0.0f);
     }
 }
 
-Antenna::Antenna(Antenna&& other) noexcept : impl(other.impl)
+void Antenna::SetOrientation(std::optional<glm::vec3> orientation)
 {
-    other.impl = nullptr; 
-}
-
-Antenna& Antenna::operator=(Antenna&& other) noexcept
-{
-    if (this != &other)
+    if (orientation.has_value())
     {
-        if(impl)
-        {
-            delete impl; 
-        } 
-        impl = other.impl; 
-        other.impl = nullptr; 
+        data->euler = orientation.value();
     }
-    return *this;
-}
-
-void Antenna::SetPosition(const glm::vec3& position)
-{
-    if(impl)
+    else
     {
-        impl->SetPosition(position);
+        data->euler = glm::vec3(0.0f, 0.0f, 0.0f);
     }
 }
 
-void Antenna::SetOrientation(const glm::vec3& euler)
+void Antenna::SetFOV(std::optional<glm::vec2> fov)
 {
-    if(impl)
+    if (fov.has_value())
     {
-        impl->SetOrientation(euler);
+        data->fov = fov.value();
     }
+    else
+    {
+        data->fov = glm::vec2(1.0f, 1.0f);
+    }
+    UpdateParameters();
 }
 
-void Antenna::SetFOV(const glm::vec2& fov)
+void Antenna::SetRayDensity(std::optional<float> ray_density)
 {
-    if(impl)
+    if (ray_density.has_value())
     {
-        impl->SetFOV(fov);
+        data->ray_density = ray_density.value();
     }
-}
-
-void Antenna::SetRayDensity(float ray_density)
-{
-    if(impl)
+    else
     {
-        impl->SetRayDensity(ray_density);
+        data->ray_density = 1E9;
     }
+    UpdateParameters();
 }
 
 glm::vec3 Antenna::GetPosition() const
 {
-    if(impl)
-    {
-        return impl->GetPosition();
-    }
-    return glm::vec3(0.0f);
+    return data->position;
 }
 
 glm::vec3 Antenna::GetOrientation() const
 {
-    if(impl)
-    {
-        return impl->GetOrientation();
-    }
-    return glm::vec3(0.0f);
+    return data->euler;
 }
 
 glm::vec2 Antenna::GetFOV() const
 {
-    if(impl)
-    {
-        return impl->GetFOV();
-    }
-    return glm::vec2(0.0f);
+    return data->fov;
 }
 
 float Antenna::GetRayDensity() const
 {
-    if(impl)
-    {
-        return impl->GetRayDensity();
-    }
-    return 0.0f;
+    return data->ray_density;
 }
 
 glm::mat3 Antenna::GetRotationMatrix() const
 {
-    if(impl)
-    {
-        return impl->GetRotationMatrix();
-    }
-    return glm::mat3(0.0f);
+    float cy = cos(data->euler.z);
+    float sy = sin(data->euler.z);
+    float cp = cos(data->euler.y);
+    float sp = sin(data->euler.y);
+    float cr = cos(data->euler.x);
+    float sr = sin(data->euler.x);
+
+    return glm::mat3(
+        cp * cy, cp * sy, -sp,
+        sr * sp * cy - cr * sy, sr * sp * sy + cr * cy, sr * cp,
+        cr * sp * cy + sr * sy, cr * sp * sy - sr * cy, cr * cp
+    );
 }
 
 float Antenna::GetSolidAngle() const
 {
-    if(impl)
-    {
-        return impl->GetSolidAngle();
-    }
-    return 0.0f;
+    return 2 * data->fov.x * std::sin(data->fov.y);
 }
 
 int Antenna::GetNRays() const
 {
-    if(impl)
-    {
-        return impl->GetNRays();
-    }
-    return 0;
+    return data->n_rays;
 }
+
+int Antenna::GetNBatches() const
+{
+    return data->n_batches;
+}
+
+void Antenna::UpdateParameters()
+{
+    float n_rays_total = data->ray_density * GetSolidAngle();
+    data->n_batches = std::ceil(n_rays_total / (OPTIX_MAX_GRID_DIM * OPTIX_MAX_GRID_DIM));
+    data->n_rays = data->n_batches * (OPTIX_MAX_GRID_DIM * OPTIX_MAX_GRID_DIM);
+    data->ray_density = data->n_rays / GetSolidAngle();
+}
+
 
 }

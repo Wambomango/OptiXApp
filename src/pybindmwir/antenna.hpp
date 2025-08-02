@@ -1,10 +1,11 @@
 #pragma once
 
+#include <torch/torch.h>
 #include <torch/extension.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "mwir/include/antenna.hpp"
+#include "mwir/antenna.hpp"
 
 namespace py = pybind11;
 
@@ -12,17 +13,13 @@ class Antenna
 {
 
 public:
+
     Antenna()
     {
-        mwir_antenna_ = std::make_unique<MWIR::Antenna>();
+        mwir_antenna_ = std::make_unique<MWIR::Antenna>(std::nullopt, std::nullopt, std::nullopt, std::nullopt);
     }
 
-    Antenna(MWIR::Antenna &&mwir_antenna)
-    {
-        mwir_antenna_ = std::make_unique<MWIR::Antenna>(std::move(mwir_antenna));
-    }
-
-    Antenna(at::Tensor &position, at::Tensor &euler, at::Tensor &fov, at::Tensor &ray_density)
+    Antenna(torch::Tensor &position, torch::Tensor &euler, torch::Tensor &fov, torch::Tensor &ray_density)
     {
         mwir_antenna_ = std::make_unique<MWIR::Antenna>(
             glm::vec3(position[0].item<float>(), position[1].item<float>(), position[2].item<float>()),
@@ -30,11 +27,27 @@ public:
             glm::vec2(fov[0].item<float>(), fov[1].item<float>()), ray_density[0].item<float>());
     }
  
-    ~Antenna()
+    Antenna(std::unique_ptr<MWIR::Antenna> &&impl)
     {
+        if (!impl)
+        {
+            throw std::invalid_argument("Antenna implementation cannot be null.");
+        }
+
+        mwir_antenna_ = std::move(impl);
     }
 
-    void SetPosition(const at::Tensor &position)
+    Antenna Clone() const
+    {
+        if (!mwir_antenna_)
+        {
+            throw std::runtime_error("Antenna ownership has been transferred.");
+        }
+
+        return Antenna(std::move(std::make_unique<MWIR::Antenna>(mwir_antenna_->Clone())));
+    }
+
+    void SetPosition(const torch::Tensor &position)
     {
         if (!mwir_antenna_)
         {
@@ -45,7 +58,7 @@ public:
         mwir_antenna_->SetPosition(pos);
     } 
 
-    void SetOrientation(const at::Tensor &euler)
+    void SetOrientation(const torch::Tensor &euler)
     {
         if (!mwir_antenna_)
         {
@@ -56,7 +69,7 @@ public:
         mwir_antenna_->SetOrientation(euler_vec);
     }
 
-    void SetFOV(const at::Tensor &fov)
+    void SetFOV(const torch::Tensor &fov)
     {
         if (!mwir_antenna_)
         {
@@ -67,7 +80,7 @@ public:
         mwir_antenna_->SetFOV(fov_vec);
     }
 
-    void SetRayDensity(const at::Tensor &ray_density)
+    void SetRayDensity(const torch::Tensor &ray_density)
     {
         if (!mwir_antenna_)
         {
@@ -77,7 +90,7 @@ public:
         mwir_antenna_->SetRayDensity(ray_density[0].item<float>());
     }
 
-    at::Tensor GetPosition() const
+    torch::Tensor GetPosition() const
     {
         if (!mwir_antenna_)
         {
@@ -85,10 +98,12 @@ public:
         }
 
         glm::vec3 pos = mwir_antenna_->GetPosition();
-        return at::tensor({pos.x, pos.y, pos.z}, torch::kFloat32).view({3});
+        torch::Tensor result = torch::tensor({pos.x, pos.y, pos.z}, torch::kFloat32);
+        result = result.view({3});
+        return result;
     }
 
-    at::Tensor GetOrientation() const
+    torch::Tensor GetOrientation() const
     {
         if (!mwir_antenna_)
         {
@@ -96,10 +111,12 @@ public:
         }
 
         glm::vec3 euler = mwir_antenna_->GetOrientation();
-        return at::tensor({euler.x, euler.y, euler.z}, torch::kFloat32).view({3});
+        torch::Tensor result = torch::tensor({euler.x, euler.y, euler.z}, torch::kFloat32);
+        result = result.view({3});
+        return result;
     }
 
-    at::Tensor GetFOV() const
+    torch::Tensor GetFOV() const
     {
         if (!mwir_antenna_)
         {
@@ -107,10 +124,12 @@ public:
         }
 
         glm::vec2 fov = mwir_antenna_->GetFOV();
-        return at::tensor({fov.x, fov.y}, torch::kFloat32).view({2});
+        torch::Tensor result = torch::tensor({fov.x, fov.y}, torch::kFloat32);
+        result = result.view({2});
+        return result;
     }
 
-    at::Tensor GetRayDensity() const
+    torch::Tensor GetRayDensity() const
     {
         if (!mwir_antenna_)
         {
@@ -118,10 +137,12 @@ public:
         }
 
         float ray_density = mwir_antenna_->GetRayDensity();
-        return at::tensor({ray_density}, torch::kFloat32).view({1});
+        torch::Tensor result = torch::tensor({ray_density}, torch::kFloat32);
+        result = result.view({1});
+        return result;
     }
 
-    at::Tensor GetSolidAngle() const
+    torch::Tensor GetSolidAngle() const
     {
         if (!mwir_antenna_)
         {
@@ -129,10 +150,12 @@ public:
         }
 
         float solid_angle = mwir_antenna_->GetSolidAngle();
-        return at::tensor({solid_angle}, torch::kFloat32).view({1});
+        torch::Tensor result = torch::tensor({solid_angle}, torch::kFloat32);
+        result = result.view({1});
+        return result;      
     }
 
-    at::Tensor GetNRays() const
+    torch::Tensor GetNRays() const
     {
         if (!mwir_antenna_)
         {
@@ -140,10 +163,10 @@ public:
         }
 
         int n_rays = mwir_antenna_->GetNRays();
-        return at::tensor({n_rays}, torch::kInt32).view({1});
+        torch::Tensor result = torch::tensor({static_cast<float>(n_rays)}, torch::kFloat32);
+        result = result.view({1});
+        return result;
     }
-
-
 
 protected:
     friend class Scene;

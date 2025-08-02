@@ -86,7 +86,8 @@
       "stack": "cpp",
       "shared_mutex": "cpp",
       "stdfloat": "cpp",
-      "text_encoding": "cpp"
+      "text_encoding": "cpp",
+      "*.inc": "cpp"
     },
 
   "python.analysis.extraPaths": [

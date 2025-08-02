@@ -50,8 +50,4 @@ ForwardPipeline::ForwardPipeline()
     sbt.hitgroupRecordCount = 1;                                             
 }
 
-ForwardPipeline::~ForwardPipeline()
-{
-}
-
 }

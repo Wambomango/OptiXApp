@@ -4,7 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "mwir/include/mesh.hpp"
+#include "mwir/mesh.hpp"
 
 
 namespace py = pybind11;
@@ -16,27 +16,32 @@ public:
 
     Mesh()
     { 
-        mwir_mesh_ = std::make_unique<MWIR::Mesh>();
+        mwir_mesh_ = std::make_unique<MWIR::Mesh>(std::nullopt);
     }
-
-    Mesh(MWIR::Mesh &&mwir_mesh)
+   
+    Mesh(std::unique_ptr<MWIR::Mesh> &&impl)
     {
-        mwir_mesh_ = std::make_unique<MWIR::Mesh>(std::move(mwir_mesh));
+        if (!impl)
+        {
+            throw std::invalid_argument("Mesh implementation cannot be null.");
+        }
+
+        mwir_mesh_ = std::move(impl);
     }
 
     Mesh(torch::Tensor &vertices)
     {
-        std::vector<glm::vec3> vertex_list;
-        for (int64_t i = 0; i < vertices.size(0); ++i)
-        {
-            glm::vec3 vertex(vertices[i][0].item<float>(), vertices[i][1].item<float>(), vertices[i][2].item<float>());
-            vertex_list.push_back(vertex);
-        }
-        mwir_mesh_ = std::make_unique<MWIR::Mesh>(std::move(vertex_list));
+        mwir_mesh_ = std::make_unique<MWIR::Mesh>(vertices);
     }
 
-    ~Mesh()
+    Mesh Clone() const
     {
+        if (!mwir_mesh_)
+        {
+            throw std::runtime_error("Mesh ownership has been transferred.");
+        }
+
+        return Mesh(std::move(std::make_unique<MWIR::Mesh>(mwir_mesh_->Clone())));
     }
 
     void SetVertices(torch::Tensor &vertices)
@@ -46,13 +51,7 @@ public:
             throw std::runtime_error("Mesh ownership has been transferred.");
         }
 
-        std::vector<glm::vec3> vertex_list;
-        for (int64_t i = 0; i < vertices.size(0); ++i)
-        {
-            glm::vec3 vertex(vertices[i][0].item<float>(), vertices[i][1].item<float>(), vertices[i][2].item<float>());
-            vertex_list.push_back(vertex);
-        }
-        mwir_mesh_->SetVertices(std::move(vertex_list));
+        mwir_mesh_->SetVertices(vertices);
     }
 
     torch::Tensor GetVertices() const
@@ -62,15 +61,7 @@ public:
             throw std::runtime_error("Mesh ownership has been transferred");
         }
 
-        const auto& vertices = mwir_mesh_->GetVertices();
-        torch::Tensor result = torch::empty({static_cast<int64_t>(vertices.size()), 3}, torch::kFloat32);
-        for (size_t i = 0; i < vertices.size(); ++i)
-        {
-            result[i][0] = vertices[i].x;
-            result[i][1] = vertices[i].y;
-            result[i][2] = vertices[i].z;
-        }
-        return result;
+        return mwir_mesh_->GetVertices();
     }
 
 

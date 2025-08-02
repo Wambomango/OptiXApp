@@ -16,16 +16,9 @@ class InversePipeline
 
 public:
     InversePipeline();
-    ~InversePipeline();
-    InversePipeline(const InversePipeline&) = delete;
-    InversePipeline& operator=(const InversePipeline&) = delete;
-    InversePipeline(InversePipeline&&) = default;
-    InversePipeline& operator=(InversePipeline&&) = default;
 
-    void Render(int n_rays, int batch_size);
-    
 protected:
-    friend class InverseRendererImpl;
+    friend class InverseRenderer;
 
     std::unique_ptr<OptiX::Module> module;
     std::unique_ptr<OptiX::ProgramGroup> raygen_prog_group;

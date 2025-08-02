@@ -4,7 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "mwir/include/forward_renderer.hpp"
+#include "mwir/forward_renderer.hpp"
 
 #include "pybindmwir/scene.hpp"
 
@@ -22,11 +22,7 @@ public:
         mwir_renderer_ = std::make_unique<MWIR::ForwardRenderer>();
     }
  
-    ~ForwardRenderer()
-    {
-    }
-
-    at::Tensor Render(std::shared_ptr<Scene> scene, std::optional<at::Tensor> result_tensor = std::nullopt)
+    torch::Tensor Render(std::shared_ptr<Scene> scene, std::optional<torch::Tensor> result_tensor = std::nullopt)
     {
         if (!mwir_renderer_)
         {

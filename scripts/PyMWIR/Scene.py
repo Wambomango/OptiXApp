@@ -5,18 +5,13 @@ from . import Antenna
 from . import Signal
 
 class Scene:
-    def __init__(self, mesh = None, senders = None, receivers = None, signal = None, impl = None):
-        if impl is None:
-            mesh = self.__SetMesh(mesh)
-            senders = self.__SetSenders(senders)
-            receivers = self.__SetReceivers(receivers)
-            signal = self.__SetSignal(signal)
-            self.scene = PyBindMWIR.Scene(mesh, senders, receivers, signal)
-        elif type(impl) is PyBindMWIR.Scene:
-            self.scene = impl
-        else:
-            raise TypeError("impl must be of type PyBindMWIR.Scene")
-
+    def __init__(self, mesh = None, senders = None, receivers = None, signal = None):
+        mesh = self.__SetMesh(mesh)
+        senders = self.__SetSenders(senders)
+        receivers = self.__SetReceivers(receivers)
+        signal = self.__SetSignal(signal)
+        self.scene = PyBindMWIR.Scene(mesh, senders, receivers, signal)
+  
     def SetMesh(self, mesh):
         if self.scene is None:
             raise ValueError("Scene ownership has been transferred")

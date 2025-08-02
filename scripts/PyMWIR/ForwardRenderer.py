@@ -1,14 +1,10 @@
 import torch
 from . import PyBindMWIR
-from . import Mesh
-from . import Antenna
-from . import Signal
 from . import Scene
 
 class ForwardRenderer:
-    def __init__(self, scene = None):
-        scene = self.__SetScene(scene)
-        self.forward_renderer = PyBindMWIR.ForwardRenderer(scene)
+    def __init__(self):
+        self.forward_renderer = PyBindMWIR.ForwardRenderer()
 
     def Render(self, scene, output=None):
         if self.forward_renderer is None:
