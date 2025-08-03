@@ -1,3 +1,3 @@
-add_subdirectory(app)
+add_subdirectory(viewer)
 add_subdirectory(mwir)
-add_subdirectory(pybindmwir)
+# add_subdirectory(pybindmwir)

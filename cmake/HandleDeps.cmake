@@ -10,16 +10,13 @@ message(STATUS "Compiling CUDA code for architecture: ${CMAKE_CUDA_ARCHITECTURES
 
 
 
-
+find_package(TBB REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(glm REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 find_package(X11 REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 find_package(pybind11 REQUIRED CONFIG)
-
-# find_package(CUDA REQUIRED)
-
 
 
 if(NOT TARGET CUDA::nvToolsExt AND TARGET CUDA::nvtx3)

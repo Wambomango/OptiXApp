@@ -1,93 +1,31 @@
 #pragma once
 
-
 #include <torch/extension.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
 #include "mwir/signal.hpp"
 
-namespace py = pybind11;
 
 class Signal
 {
 
 public:
-    Signal()
-    {
-        mwir_signal_ = std::make_unique<MWIR::Signal>(std::nullopt, std::nullopt);
-    }
+    Signal();
+    Signal(std::unique_ptr<MWIR::Signal> &&impl);
+    Signal(const torch::Tensor &frequency_range, const torch::Tensor &n_samples);
+    Signal Clone() const;
 
-    Signal(std::unique_ptr<MWIR::Signal> &&impl)
-    {
-        if (!impl)
-        {
-            throw std::invalid_argument("Signal implementation cannot be null.");
-        }
+    void SetFrequencyRange(const torch::Tensor &frequency_range, const torch::Tensor &n_samples);
+    torch::Tensor GetFrequencyRange() const;
+    torch::Tensor GetNSamples() const;
 
-        mwir_signal_ = std::move(impl);
-    }
-
-    Signal(const torch::Tensor &frequency_range, const torch::Tensor &n_samples)
-    {
-        mwir_signal_ = std::make_unique<MWIR::Signal>(glm::vec2(frequency_range[0].item<float>(), frequency_range[1].item<float>()), n_samples[0].item<int>());
-    }
-
-
-    Signal Clone() const
-    {
-        if (!mwir_signal_)
-        {
-            throw std::runtime_error("Signal ownership has been transferred.");
-        }
-
-        return Signal(std::move(std::make_unique<MWIR::Signal>(mwir_signal_->Clone())));
-    }
-
-    void SetFrequencyRange(const torch::Tensor &frequency_range, const torch::Tensor &n_samples)
-    {
-        if(!mwir_signal_)
-        {
-            throw std::runtime_error("Signal ownership has been transferred.");
-        }
-
-        mwir_signal_->SetFrequencyRange(glm::vec2(frequency_range[0].item<float>(), frequency_range[1].item<float>()), n_samples[0].item<int>());
-    }
-
-    torch::Tensor GetFrequencyRange() const
-    {
-        if(!mwir_signal_)
-        {
-            throw std::runtime_error("Signal ownership has been transferred.");
-        }
-
-        glm::vec2 freq_range = mwir_signal_->GetFrequencyRange();
-        return torch::tensor({freq_range.x, freq_range.y}, torch::kFloat32).view({2});
-    }
-
-    torch::Tensor GetNSamples() const
-    {
-        if(!mwir_signal_)
-        {
-            throw std::runtime_error("Signal ownership has been transferred.");
-        }
-
-        return torch::tensor(mwir_signal_->GetNSamples(), torch::kInt32).view({1});
-    }
-
-    torch::Tensor GetFStep() const
-    {
-        if(!mwir_signal_)
-        {
-            throw std::runtime_error("Signal ownership has been transferred.");
-        }
-
-        return torch::tensor(mwir_signal_->GetFStep(), torch::kFloat32).view({1});
-    }
-
+    torch::Tensor GetFStep() const;
 
 protected:
     friend class Scene;
     std::unique_ptr<MWIR::Signal> mwir_signal_;
 };
 
+
+void init_signal(pybind11::module_ &m);

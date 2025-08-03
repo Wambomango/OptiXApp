@@ -34,13 +34,13 @@ class ManyWorlds
             glm::vec3 max;
             float resolution;
             glm::ivec3 shape;
+            torch::Tensor occupancy;
+            torch::Tensor normal;
         };    
     
         void UpdateParams();
 
         std::shared_ptr<ManyWorldsData> data;
-        torch::Tensor occupancy;
-        torch::Tensor normal;
 };
 
 

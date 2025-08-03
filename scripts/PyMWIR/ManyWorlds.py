@@ -2,16 +2,23 @@ import torch
 from . import PyBindMWIR
 
 class ManyWorlds:
-    def __init__(self, extent = torch.tensor([[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1]]), resolution = 0.001, impl = None):
-        extent = self.__SetExtent(extent)
+    def __init__(self, min = torch.tensor([-0.1, -0.1, -0.1]), max = torch.tensor([0.1, 0.1, 0.1]), resolution = 0.001, impl = None):
+        min = self.__SetMin(min)
+        max = self.__SetMax(max)
         resolution = self.__SetResolution(resolution)
-        self.many_worlds = PyBindMWIR.ManyWorlds(extent, resolution)
+        self.many_worlds = PyBindMWIR.ManyWorlds(min, max, resolution)
 
-    def SetExtent(self, extent):
+    def SetMin(self, min):
         if self.many_worlds is None:
             raise ValueError("ManyWorlds ownership has been transferred")
-        extent = self.__SetExtent(extent)
-        self.many_worlds.SetExtent(extent)
+        min = self.__SetMin(min)
+        self.many_worlds.SetMin(min)
+
+    def SetMax(self, max):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        max = self.__SetMax(max)
+        self.many_worlds.SetMax(max)
 
     def SetResolution(self, resolution):
         if self.many_worlds is None:
@@ -19,11 +26,16 @@ class ManyWorlds:
         resolution = self.__SetResolution(resolution)
         self.many_worlds.SetResolution(resolution)
 
-    def GetExtent(self):
+    def GetMin(self):
         if self.many_worlds is None:
             raise ValueError("ManyWorlds ownership has been transferred")
-        return self.many_worlds.GetExtent()
-    
+        return self.many_worlds.GetMin()
+
+    def GetMax(self):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        return self.many_worlds.GetMax()
+
     def GetResolution(self):
         if self.many_worlds is None:
             raise ValueError("ManyWorlds ownership has been transferred")
@@ -47,18 +59,27 @@ class ManyWorlds:
     def GenerateMesh(self):
         pass
 
-    def __SetExtent(self, extent):
-        if(type(extent) is torch.Tensor):
-            if(len(extent.shape) != 2 or extent.shape[0] != 3 or extent.shape[1] != 2):
-                raise ValueError("extent must be a tensor of shape [3, 2]")
-        elif (type(extent) is list or type(extent) is tuple):
-            if(len(extent) != 3):
-                raise ValueError("position must be a list or tuple of length 3")
-            if(not all(isinstance(x, (list, tuple)) and len(x) == 2 for x in extent)):
-                raise ValueError("each element of extent must be a list or tuple of length 2")
+    def __SetMin(self, min):
+        if(type(min) is torch.Tensor):
+            if(len(min.shape) != 1 or min.shape[0] != 3):
+                raise ValueError("min must be a tensor of shape [3]")
+        elif (type(min) is list or type(min) is tuple):
+            if(len(min) != 3):
+                raise ValueError("min must be a list or tuple of length 3")
         else:
-            raise TypeError("position must be a torch.Tensor, list, or tuple")
-        return torch.tensor(extent, dtype=torch.float32)
+            raise TypeError("min must be a torch.Tensor, list, or tuple")
+        return torch.tensor(min, dtype=torch.float32)
+
+    def __SetMax(self, max):
+        if(type(max) is torch.Tensor):
+            if(len(max.shape) != 1 or max.shape[0] != 3):
+                raise ValueError("max must be a tensor of shape [3]")
+        elif (type(max) is list or type(max) is tuple):
+            if(len(max) != 3):
+                raise ValueError("max must be a list or tuple of length 3")
+        else:
+            raise TypeError("max must be a torch.Tensor, list, or tuple")
+        return torch.tensor(max, dtype=torch.float32)
 
     def __SetResolution(self, resolution):
         if(type(resolution) is not float and type(resolution) is not int):

@@ -57,7 +57,7 @@ private:
         std::vector<AntennaData> h_receivers;
         CUdeviceptr d_receivers = 0;
 
-        SceneData() : mesh(std::nullopt), signal(std::nullopt, std::nullopt)
+        SceneData() : mesh(std::nullopt, std::nullopt), signal(std::nullopt, std::nullopt)
         {
         }
         ~SceneData()

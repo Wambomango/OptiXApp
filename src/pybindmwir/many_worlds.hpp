@@ -6,142 +6,25 @@
 
 #include "mwir/many_worlds.hpp"
 
-
-namespace py = pybind11;
-
 class ManyWorlds
 {
 
 public:
 
-    ManyWorlds()
-    { 
-        mwir_many_worlds_ = std::make_unique<MWIR::ManyWorlds>(std::nullopt, std::nullopt, std::nullopt);
-    }    
+    ManyWorlds();
+    ManyWorlds(std::unique_ptr<MWIR::ManyWorlds> &&impl);
+    ManyWorlds(torch::Tensor &min, torch::Tensor &max, float resolution);
+    ManyWorlds Clone() const;
 
-    ManyWorlds(std::unique_ptr<MWIR::ManyWorlds> &&impl)
-    {
-        if (!impl)
-        {
-            throw std::invalid_argument("ManyWorlds implementation cannot be null.");
-        }
-
-        mwir_many_worlds_ = std::move(impl);
-    }
-
-    ManyWorlds(torch::Tensor &min, torch::Tensor &max, float resolution)
-    {
-        glm::vec3 min_vec = glm::vec3(min[0].item<float>(), min[1].item<float>(), min[2].item<float>());
-        glm::vec3 max_vec = glm::vec3(max[0].item<float>(), max[1].item<float>(), max[2].item<float>());
-        mwir_many_worlds_ = std::make_unique<MWIR::ManyWorlds>(min_vec, max_vec, resolution);
-    }
-
-    ManyWorlds Clone() const
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-
-        return ManyWorlds(std::move(std::make_unique<MWIR::ManyWorlds>(mwir_many_worlds_->Clone())));
-    }
-
-    void SetMin(torch::Tensor &min)
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-
-        glm::vec3 min_vec = glm::vec3(min[0].item<float>(), min[1].item<float>(), min[2].item<float>());
-        mwir_many_worlds_->SetMin(min_vec);
-    }
-
-    void SetMax(torch::Tensor &max)
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-
-        glm::vec3 max_vec = glm::vec3(max[0].item<float>(), max[1].item<float>(), max[2].item<float>());
-        mwir_many_worlds_->SetMax(max_vec);
-    }
-
-    void SetResolution(float resolution)
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-        mwir_many_worlds_->SetResolution(resolution);
-    }
-
-    torch::Tensor GetMin() const
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-
-        glm::vec3 min = mwir_many_worlds_->GetMin();
-        torch::Tensor result = torch::empty({3}, torch::kFloat32);
-        result[0] = min.x;
-        result[1] = min.y;
-        result[2] = min.z;
-        return result;
-    }
-
-    torch::Tensor GetMax() const
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-
-        glm::vec3 max = mwir_many_worlds_->GetMax();
-        torch::Tensor result = torch::empty({3}, torch::kFloat32);
-        result[0] = max.x;
-        result[1] = max.y;
-        result[2] = max.z;
-        return result;
-    }
-
-    float GetResolution() const
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-        return mwir_many_worlds_->GetResolution();
-    }
-
-    torch::Tensor GetOccupancy()
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-        return mwir_many_worlds_->GetOccupancy();
-    }
-
-    torch::Tensor GetNormal()
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-        return mwir_many_worlds_->GetNormal();
-    }
-
-    void UpdateNormals()
-    {
-        if (!mwir_many_worlds_)
-        {
-            throw std::runtime_error("ManyWorlds ownership has been transferred.");
-        }
-        mwir_many_worlds_->UpdateNormals();
-    }
+    void SetMin(torch::Tensor &min);
+    void SetMax(torch::Tensor &max);
+    void SetResolution(float resolution);
+    torch::Tensor GetMin() const;
+    torch::Tensor GetMax() const;
+    float GetResolution() const;
+    torch::Tensor GetOccupancy();
+    torch::Tensor GetNormal();
+    void UpdateNormals();
 
 
 protected:
@@ -149,3 +32,5 @@ protected:
     std::unique_ptr<MWIR::ManyWorlds> mwir_many_worlds_;
 };
 
+
+void init_many_worlds(pybind11::module_ &m);

@@ -1,4 +1,5 @@
 #include "mwir/many_worlds.hpp"
+#include <spdlog/spdlog.h>
 
 using torch::indexing::Slice;
 
@@ -8,17 +9,17 @@ namespace MWIR
 ManyWorlds::ManyWorlds(std::optional<glm::vec3> min, std::optional<glm::vec3> max, std::optional<float> resolution)
 {
     data = std::make_shared<ManyWorldsData>();
-    SetMin(min);
-    SetMax(max);
-    SetResolution(resolution);
+    data->min = min.value_or(glm::vec3(-0.1f));
+    data->max = max.value_or(glm::vec3(0.1f));
+    data->resolution = resolution.value_or(0.001f);
     UpdateParams();
 }
 
 ManyWorlds ManyWorlds::Clone() const 
 {
     ManyWorlds clone(data->min, data->max, data->resolution);
-    clone.occupancy = occupancy.clone();
-    clone.normal = normal.clone();
+    clone.data->occupancy = data->occupancy.clone();
+    clone.data->normal = data->normal.clone();
     return clone;
 }
 
@@ -83,24 +84,27 @@ float ManyWorlds::GetResolution() const
 
 torch::Tensor ManyWorlds::GetOccupancy() const
 {
-    if (occupancy.numel() == 0)
+    if (data->occupancy.numel() == 0)
     {
         throw std::runtime_error("Occupancy tensor is empty. Please set extent and resolution first.");
     }
-    return occupancy;
+    return data->occupancy;
 }
 
 torch::Tensor ManyWorlds::GetNormal() const
 {
-    if (normal.numel() == 0)
+    if (data->normal.numel() == 0)
     {
         throw std::runtime_error("Normal tensor is empty. Please set extent and resolution first.");
     }
-    return normal;
+    return data->normal;
 }
 
 void ManyWorlds::UpdateNormals()
 {
+    torch::Tensor &normal = data->normal;
+    torch::Tensor &occupancy = data->occupancy;
+
     // Compute gradients along each axis
     // X-gradient
     normal.index({Slice(1, data->shape.x-1), Slice(), Slice(), 0}) =
@@ -145,14 +149,19 @@ void ManyWorlds::UpdateParams()
             static_cast<int>(std::ceil((data->max.y - data->min.y) / data->resolution)),
             static_cast<int>(std::ceil((data->max.z - data->min.z) / data->resolution))};
 
+    if (data->shape.x <= 0 || data->shape.y <= 0 || data->shape.z <= 0)
+    {
+        throw std::invalid_argument("Shape dimensions must be positive. Check min, max, and resolution values.");
+    }
+
     data->max.x = data->min.x + data->shape[0] * data->resolution;
     data->max.y = data->min.y + data->shape[1] * data->resolution;
     data->max.z = data->min.z + data->shape[2] * data->resolution;
 
-    if (data->shape[0] != occupancy.size(0) ||  data->shape[1] != occupancy.size(1) || data->shape[2] != occupancy.size(2))
+    if (data->shape[0] != data->occupancy.size(0) ||  data->shape[1] != data->occupancy.size(1) || data->shape[2] != data->occupancy.size(2))
     {
-        occupancy = torch::zeros({data->shape[0], data->shape[1], data->shape[2]}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0).requires_grad(true));
-        normal = torch::zeros({data->shape[0], data->shape[1], data->shape[2], 3}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0));
+        data->occupancy = torch::zeros({data->shape[0], data->shape[1], data->shape[2]}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0).requires_grad(true));
+        data->normal = torch::zeros({data->shape[0], data->shape[1], data->shape[2], 3}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0));
         UpdateNormals();
     }
 }

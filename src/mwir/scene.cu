@@ -1,6 +1,7 @@
 #include "mwir/scene.hpp"
 
 #include "utils/optix/utils.hpp"
+#include "utils/optix/torch.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -41,7 +42,7 @@ namespace MWIR
         }
         else
         {
-            data->mesh = Mesh(std::nullopt);
+            data->mesh = Mesh(std::nullopt, std::nullopt);
         }
 
         data->mesh_updated = true;
@@ -119,48 +120,22 @@ namespace MWIR
     
     void Scene::UpdateMesh()
     {
-        if (!data->mesh_updated)
+        if (!(data->mesh_updated || data->mesh.data->vertices_updated || data->mesh.data->indices_updated))
         {
             return;
         }
         data->mesh_updated = false;
+        data->mesh.data->vertices_updated = false;
 
-        OptiX::Context &ctx = Context::GetInstance();
         CUDA_CHECK(cudaFree(reinterpret_cast<void *>(data->d_mesh)));
 
         torch::Tensor vertices = data->mesh.GetVertices();
-        int n_vertices = vertices.size(0);
-        if(!vertices.is_cuda())
-        {
-            vertices = vertices.cuda();
-        }
-        CUdeviceptr d_vertices = CUdeviceptr(vertices.data_ptr());
+        torch::Tensor indices = data->mesh.GetIndices();
 
-        OptixAccelBuildOptions accel_options = {};
-        accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_RANDOM_VERTEX_ACCESS;
-        accel_options.operation = OPTIX_BUILD_OPERATION_BUILD;
+        std::pair<OptixTraversableHandle, CUdeviceptr> gas = OptiX::BuildGAS(vertices, indices, Context::GetInstance().Handle());
 
-        const uint32_t triangle_input_flags[1] = {OPTIX_GEOMETRY_FLAG_NONE};
-        OptixBuildInput triangle_input = {};
-        triangle_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
-        triangle_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-        triangle_input.triangleArray.numVertices = n_vertices;
-        triangle_input.triangleArray.vertexBuffers = (n_vertices == 0) ? nullptr : &d_vertices;
-        triangle_input.triangleArray.flags = triangle_input_flags;
-        triangle_input.triangleArray.numSbtRecords = 1;
-
-        OptixAccelBufferSizes mesh_buffer_sizes;
-        OPTIX_CHECK(optixAccelComputeMemoryUsage(ctx.Handle(), &accel_options, &triangle_input, 1,  &mesh_buffer_sizes));
-
-        CUdeviceptr d_temp_buffer_gas;
-        CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_temp_buffer_gas), mesh_buffer_sizes.tempSizeInBytes));
-        CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&data->d_mesh), mesh_buffer_sizes.outputSizeInBytes));
-
-        OPTIX_CHECK(optixAccelBuild(ctx.Handle(), 0, &accel_options, &triangle_input, 1, d_temp_buffer_gas, mesh_buffer_sizes.tempSizeInBytes, 
-                                    data->d_mesh, mesh_buffer_sizes.outputSizeInBytes, &data->mesh_handle, nullptr, 0));
-
-        CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_temp_buffer_gas)));
-
+        data->mesh_handle = gas.first;
+        data->d_mesh = gas.second;
         data->params.mesh_handle = data->mesh_handle;
     }
     
