@@ -78,37 +78,40 @@ void OptiXRenderer::SetupOptiX()
 
 
 
-    OptixProgramGroupDesc raygen_prog_group_desc = {    .kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN,
+    OptixProgramGroupDesc raygen_pg_desc = {    .kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN,
                                                         .raygen = { .module = module->Handle(),
                                                                     .entryFunctionName = "__raygen__rg"}};
-    raygen_prog_group = std::make_unique<OptiX::ProgramGroup>(ctx, raygen_prog_group_desc);
+    raygen_pg = std::make_unique<OptiX::ProgramGroup>(ctx, raygen_pg_desc);
 
-    OptixProgramGroupDesc miss_prog_group_desc = {.kind = OPTIX_PROGRAM_GROUP_KIND_MISS,
+    OptixProgramGroupDesc miss_pg_desc = {.kind = OPTIX_PROGRAM_GROUP_KIND_MISS,
                                                   .miss = { .module = module->Handle(),
                                                             .entryFunctionName = "__miss__ms"}};
-    miss_prog_group = std::make_unique<OptiX::ProgramGroup>(ctx, miss_prog_group_desc);
+    miss_pg = std::make_unique<OptiX::ProgramGroup>(ctx, miss_pg_desc);
 
-    OptixProgramGroupDesc hit_prog_group_desc = {  .kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP,
+    OptixProgramGroupDesc hit_pg_desc = {  .kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP,
                                                     .hitgroup = {   .moduleCH = module->Handle(),
                                                                     .entryFunctionNameCH = "__closesthit__ch"}};
-    hit_prog_group = std::make_unique<OptiX::ProgramGroup>(ctx, hit_prog_group_desc); 
+    hit_pg = std::make_unique<OptiX::ProgramGroup>(ctx, hit_pg_desc); 
 
 
-    std::vector<OptixProgramGroup> program_groups = {raygen_prog_group->Handle(), miss_prog_group->Handle(), hit_prog_group->Handle()};
-    pipeline = std::make_unique<OptiX::Pipeline>(ctx, program_groups, pipeline_compile_options, OptixPipelineLinkOptions{.maxTraceDepth = 1});                                            
+    std::vector<OptixProgramGroup> pgs = {raygen_pg->Handle(), miss_pg->Handle(), hit_pg->Handle()};
+    pipeline = std::make_unique<OptiX::Pipeline>(ctx, pgs, pipeline_compile_options, OptixPipelineLinkOptions{.maxTraceDepth = 1});                                            
 
-    raygen_record = std::make_unique<OptiX::SBTRecord<RayGenData>>(ctx, *raygen_prog_group, RayGenData{});
-    miss_record = std::make_unique<OptiX::SBTRecord<MissData>>(ctx, *miss_prog_group, MissData{});
-    hit_record = std::make_unique<OptiX::SBTRecord<HitData>>(ctx, *hit_prog_group, HitData{});
+    std::vector<OptixProgramGroup> raygen_pgs = {raygen_pg->Handle()};
+    raygen_record = std::make_unique<OptiX::SBTRecord<RayGenData>>(ctx, raygen_pgs, std::vector<RayGenData>{RayGenData{}});
+    std::vector<OptixProgramGroup> miss_pgs = {miss_pg->Handle(), miss_pg->Handle()};
+    miss_record = std::make_unique<OptiX::SBTRecord<MissData>>(ctx, miss_pgs, std::vector<MissData>{MissData{}, MissData{}});
+    std::vector<OptixProgramGroup> hit_pgs = {hit_pg->Handle(), hit_pg->Handle()};
+    hit_record = std::make_unique<OptiX::SBTRecord<HitData>>(ctx, hit_pgs, std::vector<HitData>{HitData{}, HitData{}});
 
     sbt = {};
     sbt.raygenRecord = raygen_record->Handle();
     sbt.missRecordBase = miss_record->Handle();
-    sbt.missRecordStrideInBytes = miss_record->Size();
-    sbt.missRecordCount = 1;
+    sbt.missRecordStrideInBytes = miss_record->ElementSize();
+    sbt.missRecordCount = miss_record->NumElements();
     sbt.hitgroupRecordBase = hit_record->Handle();
-    sbt.hitgroupRecordStrideInBytes = hit_record->Size();
-    sbt.hitgroupRecordCount = 1;                             
+    sbt.hitgroupRecordStrideInBytes = hit_record->ElementSize();
+    sbt.hitgroupRecordCount = hit_record->NumElements();
 
     CUDA_CHECK(cudaStreamCreate(&stream));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&params), sizeof(Params)));

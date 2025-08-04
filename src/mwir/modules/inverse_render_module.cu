@@ -29,18 +29,18 @@ extern "C" __global__ void __raygen__rg()
     const uint3 idx = optixGetLaunchIndex();
     const uint3 dim = optixGetLaunchDimensions();
 
+
     curandState rand_state;
     curand_init(params.seed + params.antenna_index, idx.x * dim.y + idx.y, 0, &rand_state);
 
     AntennaData sender = params.scene.d_senders[params.antenna_index];
     float3 p_tx = sender.position;
     float3 dir_tx;
-    unsigned int bitmask = 0;    
- 
+    unsigned int bitmask = 0;
+
     for(int i = 0; i < sender.n_batches; i++)
     {   
         dir_tx = SampleDir(sender, rand_state);
-
         optixTrace( params.scene.mesh_handle,
                     p_tx,
                     dir_tx,
@@ -56,12 +56,12 @@ extern "C" __global__ void __raygen__rg()
     }
 }
 
-extern "C" __global__ void __miss__ms()
+extern "C" __global__ void __miss__geometry()
 {
     optixSetPayload_0(1);
 }
 
-extern "C" __global__ void __closesthit__ch()
+extern "C" __global__ void __closesthit__geometry()
 {
     const uint3 idx = optixGetLaunchIndex();
     const uint3 dim = optixGetLaunchDimensions();
@@ -98,6 +98,7 @@ extern "C" __global__ void __closesthit__ch()
     float3 vec_rx;
     complex3 A_rx;
     complex3 E_rx;
+
     for(int i = 0; i < params.scene.n_receivers; i++)
     {
         receiver_offset = ray_offset + i * params.scene.signal.n_samples;
@@ -114,15 +115,17 @@ extern "C" __global__ void __closesthit__ch()
         optixTrace( params.scene.mesh_handle,
                     p_hit + n_hit * 0.001f, 
                     dir_rx,
-                    0.0f,
-                    dist_rx,
+                    0.0f,          
+                    dist_rx,         
                     0.0f, 
                     OptixVisibilityMask( 255 ),
                     OPTIX_RAY_FLAG_NONE,
-                    0,                  
+                    1,                  
                     0,     
-                    0,              
+                    1,              
                     bitmask);
+
+
         if(bitmask == 0)
         {
             continue; 
@@ -142,3 +145,12 @@ extern "C" __global__ void __closesthit__ch()
     }
 }
 
+
+extern "C" __global__ void __miss__antenna()
+{
+    optixSetPayload_0(1);
+}
+
+extern "C" __global__ void __closesthit__antenna()
+{
+}

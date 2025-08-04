@@ -41,4 +41,3 @@ set_target_properties(MWIR PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
 
-

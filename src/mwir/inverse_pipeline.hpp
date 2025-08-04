@@ -21,9 +21,11 @@ protected:
     friend class InverseRenderer;
 
     std::unique_ptr<OptiX::Module> module;
-    std::unique_ptr<OptiX::ProgramGroup> raygen_prog_group;
-    std::unique_ptr<OptiX::ProgramGroup> miss_prog_group;
-    std::unique_ptr<OptiX::ProgramGroup> hit_prog_group;
+    std::unique_ptr<OptiX::ProgramGroup> raygen_pg;
+    std::unique_ptr<OptiX::ProgramGroup> miss_geometry_pg;
+    std::unique_ptr<OptiX::ProgramGroup> hit_geometry_pg;
+    std::unique_ptr<OptiX::ProgramGroup> miss_antenna_pg;
+    std::unique_ptr<OptiX::ProgramGroup> hit_antenna_pg;
     std::unique_ptr<OptiX::Pipeline> pipeline;
     std::unique_ptr<OptiX::SBTRecord<RayGenData>> raygen_record;
     std::unique_ptr<OptiX::SBTRecord<MissData>> miss_record;
