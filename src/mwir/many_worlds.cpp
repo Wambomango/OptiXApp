@@ -6,18 +6,19 @@ using torch::indexing::Slice;
 namespace MWIR
 {
 
-ManyWorlds::ManyWorlds(std::optional<glm::vec3> min, std::optional<glm::vec3> max, std::optional<float> resolution)
+ManyWorlds::ManyWorlds(std::optional<glm::vec3> min, std::optional<glm::vec3> max, std::optional<float> resolution, std::optional<int> n_samples)
 {
     data = std::make_shared<ManyWorldsData>();
     data->min = min.value_or(glm::vec3(-0.1f));
     data->max = max.value_or(glm::vec3(0.1f));
     data->resolution = resolution.value_or(0.001f);
+    data->n_samples = n_samples.value_or(1);
     UpdateParams();
 }
 
 ManyWorlds ManyWorlds::Clone() const 
 {
-    ManyWorlds clone(data->min, data->max, data->resolution);
+    ManyWorlds clone(data->min, data->max, data->resolution, data->n_samples);
     clone.data->occupancy = data->occupancy.clone();
     clone.data->normal = data->normal.clone();
     return clone;
@@ -67,6 +68,22 @@ void ManyWorlds::SetResolution(std::optional<float> resolution)
     UpdateParams();
 }
 
+void ManyWorlds::SetNSamples(std::optional<int> n_samples)
+{
+    if (n_samples)
+    {
+        if (*n_samples <= 0)
+        {
+            throw std::invalid_argument("Number of samples must be a positive integer");
+        }
+        data->n_samples = *n_samples;
+    }
+    else
+    {
+        data->n_samples = 1;
+    }
+}
+
 glm::vec3 ManyWorlds::GetMin() const
 {
     return data->min;
@@ -80,6 +97,11 @@ glm::vec3 ManyWorlds::GetMax() const
 float ManyWorlds::GetResolution() const
 {
     return data->resolution;
+}
+
+int ManyWorlds::GetNSamples() const
+{
+    return data->n_samples;
 }
 
 torch::Tensor ManyWorlds::GetOccupancy() const
@@ -100,7 +122,7 @@ torch::Tensor ManyWorlds::GetNormal() const
     return data->normal;
 }
 
-void ManyWorlds::UpdateNormals()
+void ManyWorlds::UpdateNormal()
 {
     torch::Tensor &normal = data->normal;
     torch::Tensor &occupancy = data->occupancy;
@@ -143,6 +165,23 @@ void ManyWorlds::UpdateNormals()
     }
 }
 
+
+ManyWorldsParams ManyWorlds::GetParams()
+{
+    ManyWorldsParams params;
+    params.min = make_float3(data->min.x, data->min.y, data->min.z);
+    params.max = make_float3(data->max.x, data->max.y, data->max.z);
+    params.resolution = data->resolution;
+    params.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
+    if(!(data->normal.is_cuda() && data->occupancy.is_cuda()))
+    {
+        throw std::runtime_error("Both occupancy and normal tensors must be on the same CUDA device.");
+    }
+    params.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
+    params.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
+    return params;
+}
+
 void ManyWorlds::UpdateParams()
 {
     data->shape = {static_cast<int>(std::ceil((data->max.x - data->min.x) / data->resolution)),
@@ -162,7 +201,7 @@ void ManyWorlds::UpdateParams()
     {
         data->occupancy = torch::zeros({data->shape[0], data->shape[1], data->shape[2]}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0).requires_grad(true));
         data->normal = torch::zeros({data->shape[0], data->shape[1], data->shape[2], 3}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0));
-        UpdateNormals();
+        UpdateNormal();
     }
 }
 

@@ -13,18 +13,20 @@ public:
 
     ManyWorlds();
     ManyWorlds(std::unique_ptr<MWIR::ManyWorlds> &&impl);
-    ManyWorlds(torch::Tensor &min, torch::Tensor &max, float resolution);
+    ManyWorlds(torch::Tensor &min, torch::Tensor &max, float resolution, int n_samples);
     ManyWorlds Clone() const;
 
     void SetMin(torch::Tensor &min);
     void SetMax(torch::Tensor &max);
     void SetResolution(float resolution);
+    void SetNSamples(int n_samples);
     torch::Tensor GetMin() const;
     torch::Tensor GetMax() const;
     float GetResolution() const;
+    int GetNSamples() const;
     torch::Tensor GetOccupancy();
     torch::Tensor GetNormal();
-    void UpdateNormals();
+    void UpdateNormal();
 
 
 protected:

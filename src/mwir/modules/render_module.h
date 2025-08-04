@@ -6,7 +6,7 @@
 #include <curand_kernel.h>
 #include <optix_types.h>
 
-struct SceneParams
+struct alignas(16) SceneParams
 {
     OptixTraversableHandle mesh_handle;
     unsigned int n_senders;
@@ -19,12 +19,20 @@ struct SceneParams
 };
 
 
-struct ManyWorldsParams
+struct alignas(16) ManyWorldsParams
 {
+    float3 min;
+    float3 max;
+    float resolution;
+    int n_samples;
+    int3 shape;
+
+    float *occupancy;
+    float3 *normal;
 };
 
 
-struct Params
+struct alignas(16) Params
 {    
     SceneParams scene;
     ManyWorldsParams many_worlds;

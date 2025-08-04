@@ -12,7 +12,9 @@ Camera::Camera(float fov, float aspect_ratio, float near_plane, float far_plane)
 
 void Camera::Tick(float dt)
 {
-    float speed = fast ? 20.0f : 5.0f; // Speed of the camera movement
+    float speed = 5.0f; // Speed of the camera movement
+    if (fast) speed *= 4.0f; // Speed up when fast is true
+    if (slow) speed *= 0.25f; // Slow down when slow is
     glm::vec3 forward = glm::normalize(glm::vec3(
         glm::sin(glm::radians(orientation.x)),
         0.0f,
@@ -168,6 +170,9 @@ void Camera::OnKey(int key, int scancode, int action, int mods)
             case GLFW_KEY_LEFT_CONTROL:
                 fast = true;
                 break;
+            case GLFW_KEY_LEFT_ALT:
+                slow = true;
+                break;
         }
     }
     else if (action == GLFW_RELEASE)
@@ -194,6 +199,9 @@ void Camera::OnKey(int key, int scancode, int action, int mods)
                 break;
             case GLFW_KEY_LEFT_CONTROL:
                 fast = false;
+                break;
+            case GLFW_KEY_LEFT_ALT:
+                slow = false;
                 break;
         }
     }

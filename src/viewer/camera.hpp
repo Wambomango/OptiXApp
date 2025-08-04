@@ -52,4 +52,5 @@ class Camera
         bool moving_up = false;
         bool moving_down = false;
         bool fast = false;
+        bool slow = false;
 };

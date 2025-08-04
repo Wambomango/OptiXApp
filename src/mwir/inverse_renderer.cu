@@ -21,7 +21,7 @@ InverseRenderer::~InverseRenderer()
 
 torch::Tensor InverseRenderer::Render(Scene &scene, ManyWorlds &many_worlds, std::optional<torch::Tensor> opt_result_tensor)
 {
-    UpdateParams(scene);
+    UpdateParams(scene, many_worlds);
     torch::Tensor result_tensor = AllocateResultTensor(opt_result_tensor);
 
     CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(d_results), 0, result_bytes, stream));
@@ -37,9 +37,10 @@ torch::Tensor InverseRenderer::Render(Scene &scene, ManyWorlds &many_worlds, std
     return result_tensor;
 }
 
-void InverseRenderer::UpdateParams(Scene &scene)
+void InverseRenderer::UpdateParams(Scene &scene, ManyWorlds &many_worlds)
 {
     params.scene = scene.GetParams();
+    params.many_worlds = many_worlds.GetParams();
     int new_n_receivers = params.scene.n_receivers;
     int new_n_samples = params.scene.signal.n_samples;
     if(new_n_receivers != n_receivers || new_n_samples != n_samples)

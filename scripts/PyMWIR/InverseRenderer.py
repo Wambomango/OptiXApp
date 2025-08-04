@@ -3,8 +3,33 @@ from . import PyBindMWIR
 from . import Scene
 from . import ManyWorlds
 
+
+
+class InverseRendererFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, occupancy, normals, payload):
+        inverse_renderer, scene, many_worlds, output = payload
+        result = inverse_renderer.Render(scene.scene, many_worlds.many_worlds, output)
+        ctx.save_for_backward(result)
+        return result
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        result = ctx.saved_tensors
+
+        print(grad_output)
+
+
+
+        return None, None, None 
+
+
+
+
+
 class InverseRenderer:
     def __init__(self):
+        self.render_func = InverseRendererFunction.apply
         self.inverse_renderer = PyBindMWIR.InverseRenderer()
 
     def Render(self, scene, many_worlds, output=None):
@@ -17,4 +42,6 @@ class InverseRenderer:
         if output is not None and type(output) is not torch.Tensor:
             raise TypeError("output must be a torch.Tensor or None")
 
-        return self.inverse_renderer.Render(scene.scene, many_worlds.many_worlds, output)
+        occupancy = many_worlds.GetOccupancy()
+        normal = many_worlds.GetNormal()
+        return self.render_func(occupancy, normal, (self.inverse_renderer, scene, many_worlds, output))

@@ -2,7 +2,7 @@
 
 #include "vec_math.h"
 
-struct AntennaData
+struct alignas(16) AntennaData
 {
     float3 position;
     float3 forward;
@@ -15,7 +15,7 @@ struct AntennaData
     int n_batches;
 };
 
-struct SignalData
+struct alignas(16) SignalData
 {
     float2 frequency_range;
     int n_samples;

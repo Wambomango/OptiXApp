@@ -16,7 +16,7 @@ ForwardPipeline::ForwardPipeline()
                                                             .pipelineLaunchParamsVariableName = "params",
                                                             .usesPrimitiveTypeFlags = (unsigned int)OPTIX_PRIMITIVE_TYPE_FLAGS_TRIANGLE};
 
-    module = std::make_unique<OptiX::Module>(ctx, std::string("RenderModule"), MODULE_DIR + std::string("render_module.cu"), module_compile_options, pipeline_compile_options);
+    module = std::make_unique<OptiX::Module>(ctx, std::string("ForwardRenderModule"), MODULE_DIR + std::string("forward_render_module.cu"), module_compile_options, pipeline_compile_options);
 
     OptixProgramGroupDesc raygen_prog_group_desc = {    .kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN,
                                                         .raygen = { .module = module->Handle(),

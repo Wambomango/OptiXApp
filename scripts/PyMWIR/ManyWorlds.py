@@ -2,11 +2,12 @@ import torch
 from . import PyBindMWIR
 
 class ManyWorlds:
-    def __init__(self, min = torch.tensor([-0.1, -0.1, -0.1]), max = torch.tensor([0.1, 0.1, 0.1]), resolution = 0.001, impl = None):
+    def __init__(self, min = torch.tensor([-0.1, -0.1, -0.1]), max = torch.tensor([0.1, 0.1, 0.1]), resolution = 0.001, n_samples = 1, impl = None):
         min = self.__SetMin(min)
         max = self.__SetMax(max)
         resolution = self.__SetResolution(resolution)
-        self.many_worlds = PyBindMWIR.ManyWorlds(min, max, resolution)
+        n_samples = self.__SetNSamples(n_samples)
+        self.many_worlds = PyBindMWIR.ManyWorlds(min, max, resolution, n_samples)
 
     def SetMin(self, min):
         if self.many_worlds is None:
@@ -26,6 +27,12 @@ class ManyWorlds:
         resolution = self.__SetResolution(resolution)
         self.many_worlds.SetResolution(resolution)
 
+    def SetNSamples(self, n_samples):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        n_samples = self.__SetNSamples(n_samples)
+        self.many_worlds.SetNSamples(n_samples)
+
     def GetMin(self):
         if self.many_worlds is None:
             raise ValueError("ManyWorlds ownership has been transferred")
@@ -41,6 +48,11 @@ class ManyWorlds:
             raise ValueError("ManyWorlds ownership has been transferred")
         return self.many_worlds.GetResolution()
 
+    def GetNSamples(self):
+        if self.many_worlds is None:
+            raise ValueError("ManyWorlds ownership has been transferred")
+        return self.many_worlds.GetNSamples()
+
     def GetOccupancy(self):
         if self.many_worlds is None:
             raise ValueError("ManyWorlds ownership has been transferred")
@@ -51,10 +63,10 @@ class ManyWorlds:
             raise ValueError("ManyWorlds ownership has been transferred")
         return self.many_worlds.GetNormal()
 
-    def UpdateNormals(self):
+    def UpdateNormal(self):
         if self.many_worlds is None:
             raise ValueError("ManyWorlds ownership has been transferred")
-        self.many_worlds.UpdateNormals()
+        self.many_worlds.UpdateNormal()
 
     def GenerateMesh(self):
         pass
@@ -87,3 +99,10 @@ class ManyWorlds:
         if(resolution <= 0):
             raise ValueError("resolution must be greater than 0")
         return float(resolution)
+    
+    def __SetNSamples(self, n_samples):
+        if(type(n_samples) is not int):
+            raise TypeError("n_samples must be an int")
+        if(n_samples <= 0):
+            raise ValueError("n_samples must be greater than 0")
+        return int(n_samples)

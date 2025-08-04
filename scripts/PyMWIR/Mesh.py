@@ -45,16 +45,23 @@ class Mesh:
             raise ValueError("Mesh ownership has been transferred")
         if type(many_worlds) is not ManyWorlds:
             raise TypeError("many_worlds must be of type ManyWorlds")
-        
+
         occupancy = many_worlds.GetOccupancy()
         extent_min = many_worlds.GetMin().cuda()
         extent_max = many_worlds.GetMax().cuda()
         vertices, indices = marching_cubes.marching_cubes(occupancy[None, :, :, :], threshold)
-        vertices = vertices[0]
-        indices = indices[0].to(torch.uint32)
-        vertices = (vertices + 1.0) * 0.5 * (extent_max - extent_min) + extent_min
-        self.mesh.SetVertices(vertices)
-        self.mesh.SetIndices(indices)
+        if type(vertices[0]) is torch.Tensor and type(indices[0]) is torch.Tensor:
+            vertices = vertices[0]
+            indices = indices[0].to(torch.uint32)
+            vertices = (vertices + 1.0) * 0.5 * (extent_max - extent_min) + extent_min
+            self.mesh.SetVertices(vertices)
+            self.mesh.SetIndices(indices)
+        else:
+            vertices = torch.zeros((0, 3), dtype=torch.float32, device="cuda")
+            indices = torch.zeros((0, 3), dtype=torch.uint32, device="cuda")
+            self.mesh.SetVertices(vertices)
+            self.mesh.SetIndices(indices)
+
 
     def ToObj(self, filename):
         with open(filename, 'w') as f:
