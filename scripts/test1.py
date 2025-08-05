@@ -22,9 +22,6 @@ with torch.no_grad():
     occupancy[:] = 0.1
     # occupancy[0:10, :, :] = 0.6
 
-
-
-
 lr = 0.01
 for i in range(1):
     with torch.no_grad():
