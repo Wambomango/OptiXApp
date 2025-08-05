@@ -1,6 +1,9 @@
 #include "mwir/many_worlds.hpp"
 #include <spdlog/spdlog.h>
 
+#include "utils/optix/torch.hpp"
+#include "mwir/context.hpp"
+
 using torch::indexing::Slice;
 
 namespace MWIR
@@ -13,7 +16,7 @@ ManyWorlds::ManyWorlds(std::optional<glm::vec3> min, std::optional<glm::vec3> ma
     data->max = max.value_or(glm::vec3(0.1f));
     data->resolution = resolution.value_or(0.001f);
     data->n_samples = n_samples.value_or(1);
-    UpdateParams();
+    UpdateParameters();
 }
 
 ManyWorlds ManyWorlds::Clone() const 
@@ -34,7 +37,9 @@ void ManyWorlds::SetMin(std::optional<glm::vec3> min)
     {
         data->min = glm::vec3(-0.1f);
     }
-    UpdateParams();
+
+    data->min_updated = true;
+    UpdateParameters();
 }
 
 void ManyWorlds::SetMax(std::optional<glm::vec3> max)
@@ -47,7 +52,8 @@ void ManyWorlds::SetMax(std::optional<glm::vec3> max)
     {
         data->max = glm::vec3(0.1f);
     }
-    UpdateParams();
+    data->max_updated = true;
+    UpdateParameters();
 }
 
 void ManyWorlds::SetResolution(std::optional<float> resolution)
@@ -65,7 +71,7 @@ void ManyWorlds::SetResolution(std::optional<float> resolution)
     {
         data->resolution = 0.001f;
     }
-    UpdateParams();
+    UpdateParameters();
 }
 
 void ManyWorlds::SetNSamples(std::optional<int> n_samples)
@@ -82,6 +88,7 @@ void ManyWorlds::SetNSamples(std::optional<int> n_samples)
     {
         data->n_samples = 1;
     }
+    UpdateParameters();
 }
 
 glm::vec3 ManyWorlds::GetMin() const
@@ -165,24 +172,28 @@ void ManyWorlds::UpdateNormal()
     }
 }
 
-
 ManyWorldsParams ManyWorlds::GetParams()
 {
-    ManyWorldsParams params;
-    params.min = make_float3(data->min.x, data->min.y, data->min.z);
-    params.max = make_float3(data->max.x, data->max.y, data->max.z);
-    params.resolution = data->resolution;
-    params.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
+    UpdateBBMesh();
+
+    data->params.min = make_float3(data->min.x, data->min.y, data->min.z);
+    data->params.max = make_float3(data->max.x, data->max.y, data->max.z);
+    data->params.resolution = data->resolution;
+    data->params.n_samples = data->n_samples;
+    data->params.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
     if(!(data->normal.is_cuda() && data->occupancy.is_cuda()))
     {
         throw std::runtime_error("Both occupancy and normal tensors must be on the same CUDA device.");
     }
-    params.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
-    params.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
-    return params;
+    data->params.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
+    data->params.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
+
+    data->params.mesh_handle = data->mesh_handle;
+
+    return data->params;
 }
 
-void ManyWorlds::UpdateParams()
+void ManyWorlds::UpdateParameters()
 {
     data->shape = {static_cast<int>(std::ceil((data->max.x - data->min.x) / data->resolution)),
             static_cast<int>(std::ceil((data->max.y - data->min.y) / data->resolution)),
@@ -203,6 +214,41 @@ void ManyWorlds::UpdateParams()
         data->normal = torch::zeros({data->shape[0], data->shape[1], data->shape[2], 3}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0));
         UpdateNormal();
     }
+}
+
+void ManyWorlds::UpdateBBMesh()
+{
+    if(!(data->min_updated || data->max_updated))
+    {
+        return;
+    }
+    data->min_updated = false;
+    data->max_updated = false;
+    CUDA_CHECK(cudaFree(reinterpret_cast<void *>(data->d_mesh)));
+
+    torch::Tensor vertices = torch::tensor({
+        {data->min.x, data->min.y, data->min.z},
+        {data->max.x, data->min.y, data->min.z},
+        {data->max.x, data->max.y, data->min.z},
+        {data->min.x, data->max.y, data->min.z},
+        {data->min.x, data->min.y, data->max.z},
+        {data->max.x, data->min.y, data->max.z},
+        {data->max.x, data->max.y, data->max.z},
+        {data->min.x, data->max.y, data->max.z}
+    }, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0));
+    torch::Tensor indices = torch::tensor({
+        {0, 1, 2}, {0, 2, 3},
+        {4, 5, 6}, {4, 6, 7},
+        {0, 1, 5}, {0, 5, 4},
+        {2, 3, 7}, {2, 7, 6},
+        {1, 2, 6}, {1, 6, 5},
+        {3, 0, 4}, {3, 4, 7}
+    }, torch::dtype(torch::kUInt32).device(torch::kCUDA, 0));
+    
+    std::pair<OptixTraversableHandle, CUdeviceptr> gas = OptiX::BuildGAS(vertices, indices, Context::GetInstance().Handle());
+
+    data->mesh_handle = gas.first;
+    data->d_mesh = gas.second;
 }
 
 

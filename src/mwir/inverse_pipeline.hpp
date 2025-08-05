@@ -26,6 +26,8 @@ protected:
     std::unique_ptr<OptiX::ProgramGroup> hit_geometry_pg;
     std::unique_ptr<OptiX::ProgramGroup> miss_antenna_pg;
     std::unique_ptr<OptiX::ProgramGroup> hit_antenna_pg;
+    std::unique_ptr<OptiX::ProgramGroup> miss_manyworlds_pg;
+    std::unique_ptr<OptiX::ProgramGroup> hit_manyworlds_pg;
     std::unique_ptr<OptiX::Pipeline> pipeline;
     std::unique_ptr<OptiX::SBTRecord<RayGenData>> raygen_record;
     std::unique_ptr<OptiX::SBTRecord<MissData>> miss_record;

@@ -29,14 +29,12 @@ extern "C" __global__ void __raygen__rg()
     const uint3 idx = optixGetLaunchIndex();
     const uint3 dim = optixGetLaunchDimensions();
 
-
     curandState rand_state;
     curand_init(params.seed + params.antenna_index, idx.x * dim.y + idx.y, 0, &rand_state);
 
     AntennaData sender = params.scene.d_senders[params.antenna_index];
     float3 p_tx = sender.position;
     float3 dir_tx;
-    unsigned int bitmask = 0;
 
     for(int i = 0; i < sender.n_batches; i++)
     {   
@@ -51,8 +49,7 @@ extern "C" __global__ void __raygen__rg()
                     OPTIX_RAY_FLAG_NONE,
                     0,                  
                     0,     
-                    0,
-                    bitmask);
+                    0);
     }
 }
 

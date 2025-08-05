@@ -12,16 +12,16 @@ Camera::Camera(float fov, float aspect_ratio, float near_plane, float far_plane)
 
 void Camera::Tick(float dt)
 {
-    float speed = 5.0f; // Speed of the camera movement
+    float speed = 1.0f; // Speed of the camera movement
     if (fast) speed *= 4.0f; // Speed up when fast is true
     if (slow) speed *= 0.25f; // Slow down when slow is
     glm::vec3 forward = glm::normalize(glm::vec3(
+        glm::cos(glm::radians(orientation.x)),
         glm::sin(glm::radians(orientation.x)),
-        0.0f,
-        -glm::cos(glm::radians(orientation.x))
+        0.0f
     ));
-    glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
-    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 0.0f, 1.0f)));
+    glm::vec3 up = glm::vec3(0.0f, 0.0f, 1.0f);
 
     if (moving_forward)
     {
@@ -104,7 +104,17 @@ void Camera::UpdateProjectionMatrix()
 }
 void Camera::UpdateViewMatrix()
 {
-    view_matrix = glm::eulerAngleX(glm::radians(-orientation.y)) * glm::eulerAngleY(glm::radians(orientation.x)) * glm::translate(glm::mat4(1.0f), -position);
+    glm::vec3 direction = glm::vec3(
+        glm::cos(glm::radians(orientation.x)) * glm::cos(glm::radians(orientation.y)),
+        glm::sin(glm::radians(orientation.x)) * glm::cos(glm::radians(orientation.y)),
+        glm::sin(glm::radians(orientation.y))
+    );
+
+    view_matrix = glm::lookAt(
+        position,                                 
+        position + direction,                    
+        glm::vec3(0.0f, 0.0f, 1.0f)               
+    );
 }
 
 float Camera::GetFOV()
@@ -129,12 +139,12 @@ void Camera::OnMouseMove(double xpos, double ypos)
     static double last_x = xpos;
     static double last_y = ypos;
     double xoffset = xpos - last_x;
-    double yoffset = last_y - ypos; 
+    double yoffset = ypos - last_y;
     last_x = xpos;
     last_y = ypos;
     float sensitivity = 0.2; 
-    orientation.x += static_cast<float>(xoffset * sensitivity);
-    orientation.y += static_cast<float>(yoffset * sensitivity);
+    orientation.x -= static_cast<float>(xoffset * sensitivity);
+    orientation.y -= static_cast<float>(yoffset * sensitivity);
     orientation.y = glm::clamp(orientation.y, -89.0f, 89.0f); 
     UpdateViewMatrix();
 }

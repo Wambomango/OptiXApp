@@ -44,7 +44,7 @@ ForwardPipeline::ForwardPipeline()
     hit_antenna_pg = std::make_unique<OptiX::ProgramGroup>(ctx, hit_antenna_pg_desc);
 
     std::vector<OptixProgramGroup> pgs = {raygen_pg->Handle(), miss_geometry_pg->Handle(), hit_geometry_pg->Handle(), miss_antenna_pg->Handle(), hit_antenna_pg->Handle()};
-    pipeline = std::make_unique<OptiX::Pipeline>(ctx, pgs, pipeline_compile_options, OptixPipelineLinkOptions{.maxTraceDepth = 1});
+    pipeline = std::make_unique<OptiX::Pipeline>(ctx, pgs, pipeline_compile_options, OptixPipelineLinkOptions{.maxTraceDepth = 2});
 
     std::vector<OptixProgramGroup> raygen_pgs = {raygen_pg->Handle()};
     raygen_record = std::make_unique<OptiX::SBTRecord<RayGenData>>(ctx, raygen_pgs, std::vector<RayGenData>{RayGenData{}});

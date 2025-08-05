@@ -25,7 +25,7 @@ static __forceinline__ __device__ void computeRay( uint3 idx, uint3 dim, float3&
     const float2 d = 2.0f * make_float2(static_cast<float>( idx.x ) / static_cast<float>( dim.x ),
                                         static_cast<float>( idx.y ) / static_cast<float>( dim.y )) - 1.0f;
     origin    = params.camera_position;
-    direction = normalize(d.x * U + d.y * V + W);
+    direction = normalize(U + d.x * V + d.y * W);
 }
 
 extern "C" __global__ void __raygen__rg()

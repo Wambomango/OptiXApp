@@ -29,6 +29,8 @@ struct alignas(16) ManyWorldsParams
 
     float *occupancy;
     float3 *normal;
+
+    OptixTraversableHandle mesh_handle;
 };
 
 

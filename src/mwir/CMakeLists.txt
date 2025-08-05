@@ -15,7 +15,7 @@ add_library(MWIR SHARED forward_renderer.cu
                         inverse_pipeline.cpp
                         function_table_definition.cu
                         kernels.cu
-                        many_worlds.cpp
+                        many_worlds.cu
                         scene.cu
                         mesh.cpp
                         antenna.cpp
@@ -24,7 +24,7 @@ add_library(MWIR SHARED forward_renderer.cu
 target_compile_definitions(MWIR PUBLIC MODULE_DIR="${MWIR_DIR}/modules/")
 target_compile_definitions(MWIR PUBLIC OPTIX_INCLUDE_DIR="${OPTIX_INCLUDE_DIR}/")
 target_compile_definitions(MWIR PUBLIC CUDA_TOOLKIT_INCLUDE_DIR="${CUDAToolkit_INCLUDE_DIRS}/")
-target_compile_definitions(MWIR PUBLIC SPDLOG_ACTIVE_LEVEL=5)
+target_compile_definitions(MWIR PUBLIC SPDLOG_ACTIVE_LEVEL=1)
 
 target_include_directories(MWIR INTERFACE ${MWIR_DIR}/include)
 target_include_directories(MWIR PUBLIC ${MWIR_PARENT_DIR} ${CUDAToolkit_INCLUDE_DIRS} ${MWIR_DIR}/modules/ ${TORCH_INCLUDE_DIRS})

@@ -43,11 +43,17 @@ class ManyWorlds
             float resolution;
             int n_samples;
             glm::ivec3 shape;
+            bool min_updated = true;
+            bool max_updated = true;
             torch::Tensor occupancy;
             torch::Tensor normal;
+            OptixTraversableHandle mesh_handle;
+            CUdeviceptr d_mesh = 0;
+            ManyWorldsParams params;
         };    
     
-        void UpdateParams();
+        void UpdateParameters();
+        void UpdateBBMesh();
 
         std::shared_ptr<ManyWorldsData> data;
 };

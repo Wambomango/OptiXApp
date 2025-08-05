@@ -1,3 +1,5 @@
+#pragma once
+
 #include <torch/torch.h>
 #include <spdlog/spdlog.h>
 
@@ -7,7 +9,7 @@
 namespace OptiX
 {
 
-std::pair<OptixTraversableHandle, CUdeviceptr> BuildGAS(torch::Tensor vertices, torch::Tensor indices, OptixDeviceContext context)
+inline std::pair<OptixTraversableHandle, CUdeviceptr> BuildGAS(torch::Tensor vertices, torch::Tensor indices, OptixDeviceContext context)
 {
     int n_vertices = vertices.size(0);
     int n_triangles = indices.size(0);

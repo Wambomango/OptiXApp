@@ -33,6 +33,7 @@ InversePipeline::InversePipeline()
                                                                .entryFunctionNameCH = "__closesthit__geometry"}};
     hit_geometry_pg = std::make_unique<OptiX::ProgramGroup>(ctx, hit_geometry_pg_desc);
 
+
     OptixProgramGroupDesc miss_antenna_pg_desc = {.kind = OPTIX_PROGRAM_GROUP_KIND_MISS,
                                                   .miss = {.module = module->Handle(),
                                                            .entryFunctionName = "__miss__antenna"}};
@@ -43,15 +44,31 @@ InversePipeline::InversePipeline()
                                                              .entryFunctionNameCH = "__closesthit__antenna"}};
     hit_antenna_pg = std::make_unique<OptiX::ProgramGroup>(ctx, hit_antenna_pg_desc);
 
-    std::vector<OptixProgramGroup> pgs = {raygen_pg->Handle(), miss_geometry_pg->Handle(), hit_geometry_pg->Handle(), miss_antenna_pg->Handle(), hit_antenna_pg->Handle()};
-    pipeline = std::make_unique<OptiX::Pipeline>(ctx, pgs, pipeline_compile_options, OptixPipelineLinkOptions{.maxTraceDepth = 1});
+
+
+    OptixProgramGroupDesc miss_manyworlds_pg_desc = {.kind = OPTIX_PROGRAM_GROUP_KIND_MISS,
+                                                  .miss = {.module = module->Handle(),
+                                                           .entryFunctionName = "__miss__manyworlds"}};
+    miss_manyworlds_pg = std::make_unique<OptiX::ProgramGroup>(ctx, miss_manyworlds_pg_desc);
+
+    OptixProgramGroupDesc hit_manyworlds_pg_desc = {.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP,
+                                                 .hitgroup = {.moduleCH = module->Handle(),
+                                                              .entryFunctionNameCH = "__closesthit__manyworlds"}};
+    hit_manyworlds_pg = std::make_unique<OptiX::ProgramGroup>(ctx, hit_manyworlds_pg_desc);
+
+    
+    std::vector<OptixProgramGroup> pgs = {raygen_pg->Handle(), 
+                                          miss_geometry_pg->Handle(), hit_geometry_pg->Handle(), 
+                                          miss_antenna_pg->Handle(), hit_antenna_pg->Handle(), 
+                                          miss_manyworlds_pg->Handle(), hit_manyworlds_pg->Handle()};
+    pipeline = std::make_unique<OptiX::Pipeline>(ctx, pgs, pipeline_compile_options, OptixPipelineLinkOptions{.maxTraceDepth = 2});
 
     std::vector<OptixProgramGroup> raygen_pgs = {raygen_pg->Handle()};
     raygen_record = std::make_unique<OptiX::SBTRecord<RayGenData>>(ctx, raygen_pgs, std::vector<RayGenData>{RayGenData{}});
-    std::vector<OptixProgramGroup> miss_pgs = {miss_geometry_pg->Handle(), miss_antenna_pg->Handle()};
-    miss_record = std::make_unique<OptiX::SBTRecord<MissData>>(ctx, miss_pgs, std::vector<MissData>{MissData{}, MissData{}});
-    std::vector<OptixProgramGroup> hit_pgs = {hit_geometry_pg->Handle(), hit_antenna_pg->Handle()};
-    hit_record = std::make_unique<OptiX::SBTRecord<HitData>>(ctx, hit_pgs, std::vector<HitData>{HitData{}, HitData{}});
+    std::vector<OptixProgramGroup> miss_pgs = {miss_geometry_pg->Handle(), miss_antenna_pg->Handle(), miss_manyworlds_pg->Handle()};
+    miss_record = std::make_unique<OptiX::SBTRecord<MissData>>(ctx, miss_pgs, std::vector<MissData>{MissData{}, MissData{}, MissData{}});
+    std::vector<OptixProgramGroup> hit_pgs = {hit_geometry_pg->Handle(), hit_antenna_pg->Handle(), hit_manyworlds_pg->Handle()};
+    hit_record = std::make_unique<OptiX::SBTRecord<HitData>>(ctx, hit_pgs, std::vector<HitData>{HitData{}, HitData{}, HitData{}});
 
     sbt = {};
     sbt.raygenRecord = raygen_record->Handle();

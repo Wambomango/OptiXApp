@@ -53,6 +53,10 @@ class Mesh:
         if type(vertices[0]) is torch.Tensor and type(indices[0]) is torch.Tensor:
             vertices = vertices[0]
             indices = indices[0].to(torch.uint32)
+            print(vertices.shape)
+            tmp = vertices[:, 2].clone()
+            vertices[:, 2] = vertices[:, 0]
+            vertices[:, 0] = tmp
             vertices = (vertices + 1.0) * 0.5 * (extent_max - extent_min) + extent_min
             self.mesh.SetVertices(vertices)
             self.mesh.SetIndices(indices)

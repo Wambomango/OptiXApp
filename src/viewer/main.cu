@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     OptiXRenderer optix_renderer(window, scene);
     window.PollEvents();
 
-    Camera camera(90.0f, float(width) / float(height), 0.1f, 10000.0f);
+    Camera camera(90.0f, float(width) / float(height), 0.01f, 1000.0f);
     camera.AddCallbacks(window);
     
     bool use_optix = false;
