@@ -7,7 +7,7 @@ InversePipeline::InversePipeline()
 {
     OptiX::Context &ctx = Context::GetInstance();
 
-    OptixModuleCompileOptions module_compile_options = {};
+    OptixModuleCompileOptions module_compile_options = {};//{.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0, .debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL};
     OptixPipelineCompileOptions pipeline_compile_options = {.usesMotionBlur = false,
                                                             .traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS,
                                                             .numPayloadValues = 2,

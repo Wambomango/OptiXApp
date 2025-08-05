@@ -23,13 +23,13 @@ static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3
     float dist_tx = length(p_hit - pos_tx);
 
     AntennaData receiver;
-    unsigned int bitmask;
+    unsigned int p0;
     float3 dir_rx;
     float dist_rx;
     float dist_total;
     complex minusjomega;
 
-    float factor = dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit) * params.many_worlds.n_samples);
+    float factor = dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit));
     float3 vec_tx = factor * cross(n_hit, cross(dir_tx, normalize(cross(dir_tx, sender.left))));
 
     float3 vec_rx;
@@ -46,7 +46,6 @@ static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3
             continue; 
         }
         
-        bitmask = 0;
         dist_rx = length(receiver.position - p_hit);
         optixTrace( params.scene.mesh_handle,
                     p_hit + n_hit * 0.001f, 
@@ -59,10 +58,16 @@ static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3
                     1,                  
                     0,     
                     1,              
-                    bitmask);
+                    p0);
 
-        if(bitmask == 0)
+        if(__uint_as_float(p0) > 0.0f)
         {
+            // if(result == params.many_worlds.perturbation)
+            // {
+            //     printf("p_hit: %.2f, %.2f, %.2f\n", p_hit.x, p_hit.y, p_hit.z);
+            // }
+
+
             continue; 
         }
         
@@ -80,27 +85,34 @@ static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3
     }
 }
 
-static __forceinline__ __device__ float3 SampleDir(const AntennaData& sender, curandState& rand_state)
-{
-    float u = curand_uniform(&rand_state);
-    float v = curand_uniform(&rand_state);
-    float azimuth = sender.fov.x * (u - 0.5f);
-    float elevation = asin(sin(sender.fov.y / 2) * (2 * v - 1.0f));
-    float3 dir = make_float3(cos(azimuth) * cos(elevation), sin(azimuth) * cos(elevation), sin(elevation));
-    return sender.forward * dir.x + sender.left * dir.y + sender.up * dir.z;
-}
 
-static __forceinline__ __device__ int LinearizeIndex(int x, int y, int z)
+
+
+static __forceinline__ __device__ int LinearizeIndex(const int &x, const int &y, const int &z)
 {
     return x * params.many_worlds.shape.y * params.many_worlds.shape.z + y * params.many_worlds.shape.z + z;
 }
 
-static __forceinline__ __device__ void SampleManyWorlds(float3 &normalized_idx, float &occupancy, float3 &normal)
+static __forceinline__ __device__ float3 SafeNormalize(const float3 &v)
 {
-    float3 continuous_idx = make_float3(static_cast<int>(normalized_idx.x * params.many_worlds.shape.x + 0.5f),
-                                        static_cast<int>(normalized_idx.y * params.many_worlds.shape.y + 0.5f),
-                                        static_cast<int>(normalized_idx.z * params.many_worlds.shape.z + 0.5f));
+    float len = length(v);
+    if (len > 1e-8f)
+    {
+        return v / len;
+    }
+    else 
+    {
+        return make_float3(0.0f, 0.0f, 1.0f);
+    }
+}
 
+
+
+static __forceinline__ __device__ void SampleManyWorlds(const float3 &normalized_idx, float &occupancy, float3 &normal)
+{
+    float3 continuous_idx = make_float3(normalized_idx.x * params.many_worlds.shape.x - 0.5f,
+                                        normalized_idx.y * params.many_worlds.shape.y - 0.5f,
+                                        normalized_idx.z * params.many_worlds.shape.z - 0.5f);
 
     int3 lower_idx = make_int3(max(0, static_cast<int>(floorf(continuous_idx.x))),
                                max(0, static_cast<int>(floorf(continuous_idx.y))),
@@ -115,24 +127,24 @@ static __forceinline__ __device__ void SampleManyWorlds(float3 &normalized_idx, 
                                 continuous_idx.z - lower_idx.z);
 
     float *occ = params.many_worlds.occupancy;
-    float o000 = occ[LinearizeIndex(lower_idx.z, lower_idx.y, lower_idx.x)];
-    float o001 = occ[LinearizeIndex(lower_idx.z, lower_idx.y, upper_idx.x)];
-    float o010 = occ[LinearizeIndex(lower_idx.z, upper_idx.y, lower_idx.x)];
-    float o011 = occ[LinearizeIndex(lower_idx.z, upper_idx.y, upper_idx.x)];
-    float o100 = occ[LinearizeIndex(upper_idx.z, lower_idx.y, lower_idx.x)];
-    float o101 = occ[LinearizeIndex(upper_idx.z, lower_idx.y, upper_idx.x)];
-    float o110 = occ[LinearizeIndex(upper_idx.z, upper_idx.y, lower_idx.x)];
-    float o111 = occ[LinearizeIndex(upper_idx.z, upper_idx.y, upper_idx.x)];
+    float o000 = occ[LinearizeIndex(lower_idx.x, lower_idx.y, lower_idx.z)];
+    float o001 = occ[LinearizeIndex(lower_idx.x, lower_idx.y, upper_idx.z)];
+    float o010 = occ[LinearizeIndex(lower_idx.x, upper_idx.y, lower_idx.z)];
+    float o011 = occ[LinearizeIndex(lower_idx.x, upper_idx.y, upper_idx.z)];
+    float o100 = occ[LinearizeIndex(upper_idx.x, lower_idx.y, lower_idx.z)];
+    float o101 = occ[LinearizeIndex(upper_idx.x, lower_idx.y, upper_idx.z)];
+    float o110 = occ[LinearizeIndex(upper_idx.x, upper_idx.y, lower_idx.z)];
+    float o111 = occ[LinearizeIndex(upper_idx.x, upper_idx.y, upper_idx.z)];
 
     float3 *nrm = params.many_worlds.normal;
-    float3 n000 = nrm[LinearizeIndex(lower_idx.z, lower_idx.y, lower_idx.x)];
-    float3 n001 = nrm[LinearizeIndex(lower_idx.z, lower_idx.y, upper_idx.x)];
-    float3 n010 = nrm[LinearizeIndex(lower_idx.z, upper_idx.y, lower_idx.x)];
-    float3 n011 = nrm[LinearizeIndex(lower_idx.z, upper_idx.y, upper_idx.x)];
-    float3 n100 = nrm[LinearizeIndex(upper_idx.z, lower_idx.y, lower_idx.x)];
-    float3 n101 = nrm[LinearizeIndex(upper_idx.z, lower_idx.y, upper_idx.x)];
-    float3 n110 = nrm[LinearizeIndex(upper_idx.z, upper_idx.y, lower_idx.x)];
-    float3 n111 = nrm[LinearizeIndex(upper_idx.z, upper_idx.y, upper_idx.x)];
+    float3 n000 = nrm[LinearizeIndex(lower_idx.x, lower_idx.y, lower_idx.z)];
+    float3 n001 = nrm[LinearizeIndex(lower_idx.x, lower_idx.y, upper_idx.z)];
+    float3 n010 = nrm[LinearizeIndex(lower_idx.x, upper_idx.y, lower_idx.z)];
+    float3 n011 = nrm[LinearizeIndex(lower_idx.x, upper_idx.y, upper_idx.z)];
+    float3 n100 = nrm[LinearizeIndex(upper_idx.x, lower_idx.y, lower_idx.z)];
+    float3 n101 = nrm[LinearizeIndex(upper_idx.x, lower_idx.y, upper_idx.z)];
+    float3 n110 = nrm[LinearizeIndex(upper_idx.x, upper_idx.y, lower_idx.z)];
+    float3 n111 = nrm[LinearizeIndex(upper_idx.x, upper_idx.y, upper_idx.z)];
 
     float o00 = o000 * (1 - deltas.x) + o001 * deltas.x;
     float o01 = o010 * (1 - deltas.x) + o011 * deltas.x;
@@ -142,16 +154,16 @@ static __forceinline__ __device__ void SampleManyWorlds(float3 &normalized_idx, 
     float o1 = o10 * (1 - deltas.y) + o11 * deltas.y;
     occupancy = o0 * (1 - deltas.z) + o1 * deltas.z;
 
-    float3 n00 = normalize(n000 * (1 - deltas.x) + n001 * deltas.x);    // Maybe safe normalize?
-    float3 n01 = normalize(n010 * (1 - deltas.x) + n011 * deltas.x);
-    float3 n10 = normalize(n100 * (1 - deltas.x) + n101 * deltas.x);
-    float3 n11 = normalize(n110 * (1 - deltas.x) + n111 * deltas.x);
-    float3 n0 = normalize(n00 * (1 - deltas.y) + n01 * deltas.y);
-    float3 n1 = normalize(n10 * (1 - deltas.y) + n11 * deltas.y);
-    normal = normalize(n0 * (1 - deltas.z) + n1 * deltas.z);
+    float3 n00 = SafeNormalize(n000 * (1 - deltas.x) + n001 * deltas.x);    // Maybe safe normalize?
+    float3 n01 = SafeNormalize(n010 * (1 - deltas.x) + n011 * deltas.x);
+    float3 n10 = SafeNormalize(n100 * (1 - deltas.x) + n101 * deltas.x);
+    float3 n11 = SafeNormalize(n110 * (1 - deltas.x) + n111 * deltas.x);
+    float3 n0 = SafeNormalize(n00 * (1 - deltas.y) + n01 * deltas.y);
+    float3 n1 = SafeNormalize(n10 * (1 - deltas.y) + n11 * deltas.y);
+    normal = SafeNormalize(n0 * (1 - deltas.z) + n1 * deltas.z);
 }
 
-static __forceinline__ __device__ void ManyWorldsContribution(uint3 &idx, float3 &p_tx, float3 &dir_tx, float &t_sample)
+static __forceinline__ __device__ void AddPerturbation(const uint3 &idx, const float3 &p_tx, const float3 &dir_tx, const float &t_sample)
 {
     float3 p_sample = p_tx + dir_tx * t_sample;
     float3 normalized_idx = make_float3((p_sample.x - params.many_worlds.min.x) / (params.many_worlds.resolution * params.many_worlds.shape.x),
@@ -169,23 +181,108 @@ static __forceinline__ __device__ void ManyWorldsContribution(uint3 &idx, float3
     float3 normal;
     SampleManyWorlds(normalized_idx, occupancy, normal);
 
-    CalculateE(idx, dir_tx, p_sample, normal, params.many_worlds.perturbation); 
-
-    complex3 *reference = params.many_worlds.reference;
-    complex3 *perturbation = params.many_worlds.perturbation;
-    complex3 *result = params.scene.result;
-
-    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples + idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
-    int receiver_offset;
-    for(int i = 0; i < params.scene.n_receivers; i++)
+    if(dot(normal, dir_tx) >= 0.0f)
     {
-        receiver_offset = ray_offset + i * params.scene.signal.n_samples;
-        for(int j = 0; j < params.scene.signal.n_samples; j++)
+        complex3 *reference = params.many_worlds.reference;
+        complex3 *result = params.scene.result;
+
+        int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples + idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
+        int receiver_offset;
+        for(int i = 0; i < params.scene.n_receivers; i++)
         {
-            complex3 E_ref = reference[receiver_offset + j];
-            complex3 E_pert = perturbation[receiver_offset + j];
-            complex3 E_res = occupancy * E_pert + (1.0f - occupancy) * E_ref;
-            result[receiver_offset + j] += E_res;
+            receiver_offset = ray_offset + i * params.scene.signal.n_samples;
+            for(int j = 0; j < params.scene.signal.n_samples; j++)
+            {
+                result[receiver_offset + j] += reference[receiver_offset + j];
+            }
+        }
+    }
+    else
+    {
+        CalculateE(idx, dir_tx, p_sample, normal, params.many_worlds.perturbation); 
+
+        complex3 *reference = params.many_worlds.reference;
+        complex3 *perturbation = params.many_worlds.perturbation;
+        complex3 *result = params.scene.result;
+        int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples + idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
+        int receiver_offset;
+
+        for(int i = 0; i < params.scene.n_receivers; i++)
+        {
+            receiver_offset = ray_offset + i * params.scene.signal.n_samples;
+            for(int j = 0; j < params.scene.signal.n_samples; j++)
+            {
+                complex3 E_ref = reference[receiver_offset + j];
+                complex3 E_pert = perturbation[receiver_offset + j];
+                complex3 E_res = occupancy * E_pert + (1.0f - occupancy) * E_ref;
+                result[receiver_offset + j] += E_res;
+            }
+        }
+    }
+}
+
+static __forceinline__ __device__ float3 SampleDir(const AntennaData& sender, curandState& rand_state)
+{
+    float u = curand_uniform(&rand_state);
+    float v = curand_uniform(&rand_state);
+    float azimuth = sender.fov.x * (u - 0.5f);
+    float elevation = asin(sin(sender.fov.y / 2) * (2 * v - 1.0f));
+    float3 dir = make_float3(cos(azimuth) * cos(elevation), sin(azimuth) * cos(elevation), sin(elevation));
+    return sender.forward * dir.x + sender.left * dir.y + sender.up * dir.z;
+}
+
+static __forceinline__ __device__ void PerturbRay(const uint3 &idx, const float3 &p_tx, const float3 &dir_tx, float &t_hit, curandState &rand_state)
+{
+    unsigned int p0 = __float_as_uint(-1.0f);
+    unsigned int p1 = __float_as_uint(-1.0f);
+
+    optixTrace( params.many_worlds.mesh_handle,
+                p_tx,
+                dir_tx,
+                0.0f,          
+                1e16f,         
+                0.0f, 
+                OptixVisibilityMask( 255 ),
+                OPTIX_RAY_FLAG_NONE,
+                2,                  
+                0,     
+                2,
+                p0,
+                p1);
+
+    float t_bb0 = __uint_as_float( p0 );
+    float t_bb1 = __uint_as_float( p1 );
+
+    if(t_bb0 < 0.0f || (t_hit < t_bb0 && t_bb0 < t_bb1))
+    {
+        complex3 *reference = params.many_worlds.reference;
+        complex3 *result = params.scene.result;
+        int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples + idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
+        int receiver_offset;
+        for(int i = 0; i < params.scene.n_receivers; i++)
+        {
+            receiver_offset = ray_offset + i * params.scene.signal.n_samples;
+            for(int j = 0; j < params.scene.signal.n_samples; j++)
+            {
+                result[receiver_offset + j] += reference[receiver_offset + j];
+            }
+        }
+    }
+    else
+    {
+        float t_sample;
+        for(int j = 0; j < params.many_worlds.n_samples; j++)
+        {
+            if(t_bb1 < 0.0f)
+            {
+                t_sample = min(t_bb0, t_hit) * curand_uniform(&rand_state);
+            }
+            else
+            {
+                t_sample = t_bb0 + (min(t_bb1, t_hit) - t_bb0) * curand_uniform(&rand_state);
+            }
+
+            AddPerturbation(idx, p_tx, dir_tx, t_sample);
         }
     }
 }
@@ -194,7 +291,6 @@ extern "C" __global__ void __raygen__rg()
 {
     uint3 idx = optixGetLaunchIndex();
     uint3 dim = optixGetLaunchDimensions();
-
     curandState rand_state;
     curand_init(params.seed + params.antenna_index, idx.x * dim.y + idx.y, 0, &rand_state);
 
@@ -202,10 +298,7 @@ extern "C" __global__ void __raygen__rg()
     float3 p_tx = sender.position;
     float3 dir_tx;
     unsigned int p0;
-    unsigned int p1;
-    float t_bb0;
-    float t_bb1;
-    float t_sample;
+    float t_hit;
 
     for(int i = 0; i < sender.n_batches; i++)
     {   
@@ -220,58 +313,35 @@ extern "C" __global__ void __raygen__rg()
                     OPTIX_RAY_FLAG_NONE,
                     0,                  
                     0,     
-                    0);
+                    0,
+                    p0);
 
-        p0 = __float_as_uint(-1.0f);
-        p1 = __float_as_uint(-1.0f);
-        optixTrace( params.many_worlds.mesh_handle,
-                    p_tx,
-                    dir_tx,
-                    0.0f,          
-                    1e16f,         
-                    0.0f, 
-                    OptixVisibilityMask( 255 ),
-                    OPTIX_RAY_FLAG_NONE,
-                    2,                  
-                    0,     
-                    2,
-                    p0,
-                    p1);
-
-        t_bb0 = __uint_as_float( p0 );
-        t_bb1 = __uint_as_float( p1 );
-
-        if(t_bb0 < 0.0f)
-        {
-            continue;
-        }
-
-        for(int j = 0; j < params.many_worlds.n_samples; j++)
-        {
-            if(t_bb1 < 0.0f)
-            {
-                t_sample = t_bb0 * curand_uniform(&rand_state);
-            }
-            else
-            {
-                t_sample = t_bb0 + (t_bb1 - t_bb0) * curand_uniform(&rand_state);
-            }
-
-            ManyWorldsContribution(idx, p_tx, dir_tx, t_sample);
-        }
+        t_hit = __uint_as_float(p0);
+        PerturbRay(idx, p_tx, dir_tx, t_hit, rand_state);
     }
 }
 
 
 extern "C" __global__ void __miss__geometry()
 {
-    optixSetPayload_0(1);
+    optixSetPayload_0(__float_as_uint(-1.0f));
+    uint3 idx = optixGetLaunchIndex();
+    complex3 *reference = params.many_worlds.reference;
+    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples + idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
+    int receiver_offset;
+    for(int i = 0; i < params.scene.n_receivers; i++)
+    {
+        receiver_offset = ray_offset + i * params.scene.signal.n_samples;
+        for(int j = 0; j < params.scene.signal.n_samples; j++)
+        {
+            reference[receiver_offset + j] = make_complex3(0.0f);
+        }
+    }
 }
 extern "C" __global__ void __closesthit__geometry()
 {
+    optixSetPayload_0(__float_as_uint(optixGetRayTmax()));
     uint3 idx = optixGetLaunchIndex();
-    uint3 dim = optixGetLaunchDimensions();
-
     float3 p_hit = optixGetWorldRayOrigin() + optixGetWorldRayDirection() * optixGetRayTmax();
     float3 vertices[3] = {};
     optixGetTriangleVertexData(optixGetGASTraversableHandle(), optixGetPrimitiveIndex(), optixGetSbtGASIndex(), 0, vertices );
@@ -289,12 +359,13 @@ extern "C" __global__ void __closesthit__geometry()
 
 extern "C" __global__ void __miss__antenna()
 {
-    optixSetPayload_0(1);
-}
-extern "C" __global__ void __closesthit__antenna()
-{
+    optixSetPayload_0(0);
 }
 
+extern "C" __global__ void __closesthit__antenna()
+{
+    optixSetPayload_0(__float_as_uint(optixGetRayTmax()));
+}
 
 
 extern "C" __global__ void __miss__manyworlds()

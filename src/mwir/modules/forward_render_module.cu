@@ -23,7 +23,7 @@ static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3
     float dist_tx = length(p_hit - pos_tx);
 
     AntennaData receiver;
-    unsigned int bitmask;
+    unsigned int p0;
     float3 dir_rx;
     float dist_rx;
     float dist_total;
@@ -46,7 +46,6 @@ static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3
             continue; 
         }
         
-        bitmask = 0;
         dist_rx = length(receiver.position - p_hit);
         optixTrace( params.scene.mesh_handle,
                     p_hit + n_hit * 0.001f, 
@@ -59,9 +58,9 @@ static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3
                     1,                  
                     0,     
                     1,              
-                    bitmask);
+                    p0);
 
-        if(bitmask == 0)
+        if(__uint_as_float(p0) > 0.0f)
         {
             continue; 
         }
@@ -145,9 +144,10 @@ extern "C" __global__ void __closesthit__geometry()
 
 extern "C" __global__ void __miss__antenna()
 {
-    optixSetPayload_0(1);
+    optixSetPayload_0(0);
 }
 
 extern "C" __global__ void __closesthit__antenna()
 {
+    optixSetPayload_0(__float_as_uint(optixGetRayTmax()));
 }
