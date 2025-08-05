@@ -16,8 +16,8 @@ struct alignas(16) SceneParams
     AntennaData *h_receivers;
     AntennaData *d_receivers;
     SignalData signal;
+    complex3 *result;
 };
-
 
 struct alignas(16) ManyWorldsParams
 {
@@ -30,9 +30,11 @@ struct alignas(16) ManyWorldsParams
     float *occupancy;
     float3 *normal;
 
+    complex3 *reference;
+    complex3 *perturbation;
+
     OptixTraversableHandle mesh_handle;
 };
-
 
 struct alignas(16) Params
 {    
@@ -40,7 +42,6 @@ struct alignas(16) Params
     ManyWorldsParams many_worlds;
 
     int antenna_index;
-    complex3 *result;
 
     int seed;
     curandState *randstates;

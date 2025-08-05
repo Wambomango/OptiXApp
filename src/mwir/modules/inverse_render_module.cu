@@ -12,7 +12,7 @@ extern "C"
     __constant__ Params params;
 }
 
-static __device__ void CalculateE(uint3 idx, float3 p_hit, float3 n_hit, complex3* result)
+static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3 n_hit, complex3* result)
 {
     int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples +
                     idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
@@ -20,7 +20,6 @@ static __device__ void CalculateE(uint3 idx, float3 p_hit, float3 n_hit, complex
 
     AntennaData sender = params.scene.d_senders[params.antenna_index];
     float3 pos_tx = sender.position;
-    float3 dir_tx = optixGetWorldRayDirection();
     float dist_tx = length(p_hit - pos_tx);
 
     AntennaData receiver;
@@ -30,7 +29,7 @@ static __device__ void CalculateE(uint3 idx, float3 p_hit, float3 n_hit, complex
     float dist_total;
     complex minusjomega;
 
-    float factor = dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit));
+    float factor = dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit) * params.many_worlds.n_samples);
     float3 vec_tx = factor * cross(n_hit, cross(dir_tx, normalize(cross(dir_tx, sender.left))));
 
     float3 vec_rx;
@@ -152,7 +151,7 @@ static __forceinline__ __device__ void SampleManyWorlds(float3 &normalized_idx, 
     normal = normalize(n0 * (1 - deltas.z) + n1 * deltas.z);
 }
 
-static __forceinline__ __device__ void ManyWorldsContribution(float3 &p_tx, float3 &dir_tx, float &t_sample)
+static __forceinline__ __device__ void ManyWorldsContribution(uint3 &idx, float3 &p_tx, float3 &dir_tx, float &t_sample)
 {
     float3 p_sample = p_tx + dir_tx * t_sample;
     float3 normalized_idx = make_float3((p_sample.x - params.many_worlds.min.x) / (params.many_worlds.resolution * params.many_worlds.shape.x),
@@ -169,12 +168,32 @@ static __forceinline__ __device__ void ManyWorldsContribution(float3 &p_tx, floa
     float occupancy;
     float3 normal;
     SampleManyWorlds(normalized_idx, occupancy, normal);
+
+    CalculateE(idx, dir_tx, p_sample, normal, params.many_worlds.perturbation); 
+
+    complex3 *reference = params.many_worlds.reference;
+    complex3 *perturbation = params.many_worlds.perturbation;
+    complex3 *result = params.scene.result;
+
+    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples + idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
+    int receiver_offset;
+    for(int i = 0; i < params.scene.n_receivers; i++)
+    {
+        receiver_offset = ray_offset + i * params.scene.signal.n_samples;
+        for(int j = 0; j < params.scene.signal.n_samples; j++)
+        {
+            complex3 E_ref = reference[receiver_offset + j];
+            complex3 E_pert = perturbation[receiver_offset + j];
+            complex3 E_res = occupancy * E_pert + (1.0f - occupancy) * E_ref;
+            result[receiver_offset + j] += E_res;
+        }
+    }
 }
 
 extern "C" __global__ void __raygen__rg()
 {
-    const uint3 idx = optixGetLaunchIndex();
-    const uint3 dim = optixGetLaunchDimensions();
+    uint3 idx = optixGetLaunchIndex();
+    uint3 dim = optixGetLaunchDimensions();
 
     curandState rand_state;
     curand_init(params.seed + params.antenna_index, idx.x * dim.y + idx.y, 0, &rand_state);
@@ -238,7 +257,7 @@ extern "C" __global__ void __raygen__rg()
                 t_sample = t_bb0 + (t_bb1 - t_bb0) * curand_uniform(&rand_state);
             }
 
-            ManyWorldsContribution(p_tx, dir_tx, t_sample);
+            ManyWorldsContribution(idx, p_tx, dir_tx, t_sample);
         }
     }
 }
@@ -250,8 +269,8 @@ extern "C" __global__ void __miss__geometry()
 }
 extern "C" __global__ void __closesthit__geometry()
 {
-    const uint3 idx = optixGetLaunchIndex();
-    const uint3 dim = optixGetLaunchDimensions();
+    uint3 idx = optixGetLaunchIndex();
+    uint3 dim = optixGetLaunchDimensions();
 
     float3 p_hit = optixGetWorldRayOrigin() + optixGetWorldRayDirection() * optixGetRayTmax();
     float3 vertices[3] = {};
@@ -263,7 +282,7 @@ extern "C" __global__ void __closesthit__geometry()
         return;
     }
 
-    CalculateE(idx, p_hit, n_hit, params.result);
+    CalculateE(idx, optixGetWorldRayDirection(), p_hit, n_hit, params.many_worlds.reference);
 }
 
 

@@ -9,8 +9,17 @@
 namespace OptiX
 {
 
-inline std::pair<OptixTraversableHandle, CUdeviceptr> BuildGAS(torch::Tensor vertices, torch::Tensor indices, OptixDeviceContext context)
+inline std::pair<OptixTraversableHandle, CUdeviceptr> BuildGAS(torch::Tensor vertices, torch::Tensor indices, OptixDeviceContext context, CUstream stream = 0)
 {
+    if (vertices.dim() != 2 || vertices.size(1) != 3)
+    {
+        throw std::runtime_error("Vertices tensor must be of shape [N, 3]");
+    }
+    if (indices.dim() != 2 || indices.size(1) != 3)
+    {
+        throw std::runtime_error("Indices tensor must be of shape [M, 3]");
+    }
+
     int n_vertices = vertices.size(0);
     int n_triangles = indices.size(0);
 
@@ -48,13 +57,13 @@ inline std::pair<OptixTraversableHandle, CUdeviceptr> BuildGAS(torch::Tensor ver
 
     CUdeviceptr d_temp_buffer_gas;
     CUdeviceptr d_mesh;
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_temp_buffer_gas), mesh_buffer_sizes.tempSizeInBytes));
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_mesh), mesh_buffer_sizes.outputSizeInBytes));
+    CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&d_temp_buffer_gas), mesh_buffer_sizes.tempSizeInBytes, stream));
+    CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&d_mesh), mesh_buffer_sizes.outputSizeInBytes, stream));
 
     OptixTraversableHandle mesh_handle;
-    OPTIX_CHECK(optixAccelBuild(context, 0, &accel_options, &triangle_input, 1, d_temp_buffer_gas, mesh_buffer_sizes.tempSizeInBytes, d_mesh, mesh_buffer_sizes.outputSizeInBytes, &mesh_handle, nullptr, 0));
+    OPTIX_CHECK(optixAccelBuild(context, stream, &accel_options, &triangle_input, 1, d_temp_buffer_gas, mesh_buffer_sizes.tempSizeInBytes, d_mesh, mesh_buffer_sizes.outputSizeInBytes, &mesh_handle, nullptr, 0));
 
-    CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_temp_buffer_gas)));
+    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(d_temp_buffer_gas), stream));
 
     return {mesh_handle, d_mesh};
 }

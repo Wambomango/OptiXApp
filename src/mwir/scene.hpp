@@ -34,7 +34,7 @@ public:
 protected:
     friend class ForwardRenderer;
     friend class InverseRenderer;
-    SceneParams GetParams();
+    void PrepareRendering(Params &params, CUstream stream);
 
 private:
     struct SceneData
@@ -48,7 +48,6 @@ private:
         bool senders_updated = true;
         bool receivers_updated = true;
         bool signal_updated = true;
-        SceneParams params;
 
         OptixTraversableHandle mesh_handle;
         CUdeviceptr d_mesh = 0;
@@ -56,6 +55,8 @@ private:
         CUdeviceptr d_senders = 0;
         std::vector<AntennaData> h_receivers;
         CUdeviceptr d_receivers = 0;
+        size_t buffer_bytes = 0;
+        CUdeviceptr d_result = 0;
 
         SceneData() : mesh(std::nullopt, std::nullopt), signal(std::nullopt, std::nullopt)
         {
@@ -65,13 +66,15 @@ private:
             CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_mesh)));
             CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_senders)));
             CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_receivers)));
+            CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_result)));
         }
     };
 
-    void UpdateMesh();
-    void UpdateSenders();
-    void UpdateReceivers();
-    void UpdateSignal();
+    void UpdateMesh(Params &params, CUstream stream);
+    void UpdateSenders(Params &params, CUstream stream);
+    void UpdateReceivers(Params &params, CUstream stream);
+    void UpdateSignal(Params &params, CUstream stream);
+    void UpdateBuffers(Params &params, CUstream stream);
 
     std::shared_ptr<SceneData> data;
 };

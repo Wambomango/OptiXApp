@@ -2,12 +2,15 @@
 
 #include "mwir/modules/render_module.h"
 
+#include "utils/optix/utils.hpp"
+
 #include <torch/torch.h>
 #include <glm/glm.hpp>
 #include <string>
 #include <vector>
 #include <optional>
 #include <memory>
+#include <cuda.h>
 
 namespace MWIR
 {
@@ -33,7 +36,7 @@ class ManyWorlds
         
     protected:
         friend class InverseRenderer;
-        ManyWorldsParams GetParams();
+        void PrepareRendering(Params& params, CUstream stream);
         
     private:
         struct ManyWorldsData
@@ -49,11 +52,21 @@ class ManyWorlds
             torch::Tensor normal;
             OptixTraversableHandle mesh_handle;
             CUdeviceptr d_mesh = 0;
-            ManyWorldsParams params;
-        };    
-    
-        void UpdateParameters();
-        void UpdateBBMesh();
+            size_t buffer_bytes = 0;
+            CUdeviceptr d_reference = 0;
+            CUdeviceptr d_perturbation = 0;
+
+            ~ManyWorldsData() 
+            {
+                CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_mesh)));
+                CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_reference)));
+                CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_perturbation)));
+            }
+        };
+
+        void UpdateShape();
+        void UpdateBBMesh(Params& params, CUstream stream);
+        void UpdateBuffers(Params& params, CUstream stream);
 
         std::shared_ptr<ManyWorldsData> data;
 };

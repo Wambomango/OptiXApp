@@ -12,7 +12,7 @@ extern "C"
     __constant__ Params params;
 }
 
-static __device__ void CalculateE(uint3 idx, float3 p_hit, float3 n_hit, complex3* result)
+static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3 n_hit, complex3* result)
 {
     int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples +
                     idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
@@ -20,7 +20,6 @@ static __device__ void CalculateE(uint3 idx, float3 p_hit, float3 n_hit, complex
 
     AntennaData sender = params.scene.d_senders[params.antenna_index];
     float3 pos_tx = sender.position;
-    float3 dir_tx = optixGetWorldRayDirection();
     float dist_tx = length(p_hit - pos_tx);
 
     AntennaData receiver;
@@ -127,8 +126,8 @@ extern "C" __global__ void __miss__geometry()
 
 extern "C" __global__ void __closesthit__geometry()
 {
-    const uint3 idx = optixGetLaunchIndex();
-    const uint3 dim = optixGetLaunchDimensions();
+    uint3 idx = optixGetLaunchIndex();
+    uint3 dim = optixGetLaunchDimensions();
 
     float3 p_hit = optixGetWorldRayOrigin() + optixGetWorldRayDirection() * optixGetRayTmax();
     float3 vertices[3] = {};
@@ -140,7 +139,7 @@ extern "C" __global__ void __closesthit__geometry()
         return;
     }
 
-    CalculateE(idx, p_hit, n_hit, params.result);
+    CalculateE(idx, optixGetWorldRayDirection(), p_hit, n_hit, params.scene.result);
 }
 
 

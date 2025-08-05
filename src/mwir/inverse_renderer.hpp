@@ -25,7 +25,7 @@ public:
     torch::Tensor Render(Scene &scene, ManyWorlds &many_worlds, std::optional<torch::Tensor> result_tensor = std::nullopt);
 
 private:
-    void UpdateParams(Scene &scene, ManyWorlds &many_worlds);
+    void PrepareRendering(Scene &scene, ManyWorlds &many_worlds);
     torch::Tensor AllocateResultTensor(std::optional<torch::Tensor> result_tensor);
     void RenderAntenna(int sender_index);
 

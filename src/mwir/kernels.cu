@@ -18,7 +18,7 @@ __global__ void MergeResults(Params *params, complex3 *result)
     for(int y = 0; y < OPTIX_MAX_GRID_DIM; y++)
     {
         int idx = row_antenna_frequency_offset + y * params->scene.n_receivers * params->scene.signal.n_samples;
-        complex3 cell = params->result[idx];
+        complex3 cell = params->scene.result[idx];
         sum += cell;
     }
     shared_result[row_index] = sum;

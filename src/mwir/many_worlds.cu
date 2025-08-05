@@ -16,7 +16,7 @@ ManyWorlds::ManyWorlds(std::optional<glm::vec3> min, std::optional<glm::vec3> ma
     data->max = max.value_or(glm::vec3(0.1f));
     data->resolution = resolution.value_or(0.001f);
     data->n_samples = n_samples.value_or(1);
-    UpdateParameters();
+    UpdateShape();
 }
 
 ManyWorlds ManyWorlds::Clone() const 
@@ -39,7 +39,7 @@ void ManyWorlds::SetMin(std::optional<glm::vec3> min)
     }
 
     data->min_updated = true;
-    UpdateParameters();
+    UpdateShape();
 }
 
 void ManyWorlds::SetMax(std::optional<glm::vec3> max)
@@ -53,7 +53,7 @@ void ManyWorlds::SetMax(std::optional<glm::vec3> max)
         data->max = glm::vec3(0.1f);
     }
     data->max_updated = true;
-    UpdateParameters();
+    UpdateShape();
 }
 
 void ManyWorlds::SetResolution(std::optional<float> resolution)
@@ -71,7 +71,7 @@ void ManyWorlds::SetResolution(std::optional<float> resolution)
     {
         data->resolution = 0.001f;
     }
-    UpdateParameters();
+    UpdateShape();
 }
 
 void ManyWorlds::SetNSamples(std::optional<int> n_samples)
@@ -88,7 +88,6 @@ void ManyWorlds::SetNSamples(std::optional<int> n_samples)
     {
         data->n_samples = 1;
     }
-    UpdateParameters();
 }
 
 glm::vec3 ManyWorlds::GetMin() const
@@ -172,28 +171,28 @@ void ManyWorlds::UpdateNormal()
     }
 }
 
-ManyWorldsParams ManyWorlds::GetParams()
+void ManyWorlds::PrepareRendering(Params& params, CUstream stream)
 {
-    UpdateBBMesh();
-
-    data->params.min = make_float3(data->min.x, data->min.y, data->min.z);
-    data->params.max = make_float3(data->max.x, data->max.y, data->max.z);
-    data->params.resolution = data->resolution;
-    data->params.n_samples = data->n_samples;
-    data->params.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
+    params.many_worlds.min = make_float3(data->min.x, data->min.y, data->min.z);
+    params.many_worlds.max = make_float3(data->max.x, data->max.y, data->max.z);
+    params.many_worlds.resolution = data->resolution;
+    params.many_worlds.n_samples = data->n_samples;
+    params.many_worlds.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
     if(!(data->normal.is_cuda() && data->occupancy.is_cuda()))
     {
         throw std::runtime_error("Both occupancy and normal tensors must be on the same CUDA device.");
     }
-    data->params.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
-    data->params.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
+    params.many_worlds.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
+    params.many_worlds.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
 
-    data->params.mesh_handle = data->mesh_handle;
+    UpdateBBMesh(params, stream);
+    UpdateBuffers(params, stream);
 
-    return data->params;
+    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(params.many_worlds.reference), 0, data->buffer_bytes, stream));
+    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(params.many_worlds.perturbation), 0, data->buffer_bytes, stream));
 }
 
-void ManyWorlds::UpdateParameters()
+void ManyWorlds::UpdateShape()
 {
     data->shape = {static_cast<int>(std::ceil((data->max.x - data->min.x) / data->resolution)),
             static_cast<int>(std::ceil((data->max.y - data->min.y) / data->resolution)),
@@ -216,7 +215,7 @@ void ManyWorlds::UpdateParameters()
     }
 }
 
-void ManyWorlds::UpdateBBMesh()
+void ManyWorlds::UpdateBBMesh(Params& params, CUstream stream)
 {
     if(!(data->min_updated || data->max_updated))
     {
@@ -224,7 +223,7 @@ void ManyWorlds::UpdateBBMesh()
     }
     data->min_updated = false;
     data->max_updated = false;
-    CUDA_CHECK(cudaFree(reinterpret_cast<void *>(data->d_mesh)));
+    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_mesh), stream));
 
     torch::Tensor vertices = torch::tensor({
         {data->min.x, data->min.y, data->min.z},
@@ -245,11 +244,29 @@ void ManyWorlds::UpdateBBMesh()
         {3, 0, 4}, {3, 4, 7}
     }, torch::dtype(torch::kUInt32).device(torch::kCUDA, 0));
     
-    std::pair<OptixTraversableHandle, CUdeviceptr> gas = OptiX::BuildGAS(vertices, indices, Context::GetInstance().Handle());
+    std::pair<OptixTraversableHandle, CUdeviceptr> gas = OptiX::BuildGAS(vertices, indices, Context::GetInstance().Handle(), stream);
 
     data->mesh_handle = gas.first;
     data->d_mesh = gas.second;
+
+    params.many_worlds.mesh_handle = data->mesh_handle;
 }
 
+void ManyWorlds::UpdateBuffers(Params &params, CUstream stream)
+{
+    size_t new_buffer_bytes = OPTIX_MAX_GRID_DIM * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples * sizeof(complex3);
+    if(new_buffer_bytes == data->buffer_bytes)
+    {
+        return;
+    }
+    data->buffer_bytes = new_buffer_bytes;
+    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_reference), stream));
+    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_perturbation), stream));
+    CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_reference), data->buffer_bytes, stream));
+    CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_perturbation), data->buffer_bytes, stream));
+
+    params.many_worlds.reference = reinterpret_cast<complex3 *>(data->d_reference);
+    params.many_worlds.perturbation = reinterpret_cast<complex3 *>(data->d_perturbation);
+}
 
 }
