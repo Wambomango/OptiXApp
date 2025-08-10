@@ -30,7 +30,7 @@ public:
 
 
 protected:
-    friend class InverseRenderer;
+    friend class ManyWorldsRenderer;
     std::unique_ptr<MWIR::ManyWorlds> mwir_many_worlds_;
 };
 

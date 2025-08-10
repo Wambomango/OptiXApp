@@ -8,16 +8,16 @@ from mpl_toolkits.mplot3d import Axes3D
 plate_scale = 0.5
 plate_distance = 100
 
-renderer = mwir.ForwardRenderer()
+renderer = mwir.Renderer()
 
-sender = mwir.Antenna((0, 0, 0), (0, 0, 0), (0.10, 0.10), 1E9)
+sender = mwir.Antenna((0, 0, 0), (0, 0, 0), (0.10, 0.10), 1E5)
 receiver = mwir.Antenna((0, 0, 0), (0, 0, 0), (0.10, 0.10), 1E9)
 signal = mwir.Signal((10e9, 10e9), 1)
 mesh = mwir.Mesh(indices = torch.tensor([[0, 1, 2], [1, 3, 2]], dtype=torch.uint32))
 scene = mwir.Scene(mesh, [sender], [receiver], signal)
 
-n_angles = 1
-angles = torch.linspace(0, 0, n_angles) * torch.pi / 180
+n_angles = 100
+angles = torch.linspace(-10, 10, n_angles) * torch.pi / 180
 rcs = torch.zeros(n_angles, dtype=torch.float32)
 
 for i in range(n_angles):

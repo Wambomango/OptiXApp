@@ -7,8 +7,8 @@ pybind11_add_module(PyBindMWIR  pybindmwir.cpp
                                 antenna.cpp
                                 many_worlds.cpp
                                 mesh.cpp
-                                forward_renderer.cpp
-                                inverse_renderer.cpp
+                                renderer.cpp
+                                many_worlds_renderer.cpp
                                 scene.cpp
                                 signal.cpp)
 target_include_directories(PyBindMWIR PUBLIC ${PYBINDMWIR_PARENT_DIR} ${Python3_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})

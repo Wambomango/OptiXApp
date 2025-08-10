@@ -30,8 +30,8 @@ public:
     std::shared_ptr<Signal> GetSignal();
 
 protected:
-    friend class ForwardRenderer;
-    friend class InverseRenderer;
+    friend class Renderer;
+    friend class ManyWorldsRenderer;
     std::unique_ptr<MWIR::Scene> mwir_scene_;
 };
 

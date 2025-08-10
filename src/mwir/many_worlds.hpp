@@ -35,7 +35,7 @@ class ManyWorlds
         void UpdateNormal();
         
     protected:
-        friend class InverseRenderer;
+        friend class ManyWorldsRenderer;
         void PrepareRendering(Params& params, CUstream stream);
         
     private:

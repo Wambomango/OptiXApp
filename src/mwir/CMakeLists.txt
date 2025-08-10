@@ -9,13 +9,13 @@ SET(MWIR_LIBS   spdlog::spdlog
 
 get_target_property(OPTIX_INCLUDE_DIR OptiX INCLUDE_DIRECTORIES)
 
-add_library(MWIR SHARED forward_renderer.cu
-                        forward_pipeline.cpp
-                        inverse_renderer.cu
-                        inverse_pipeline.cpp
+add_library(MWIR SHARED renderer.cu
+                        pipeline.cpp
+                        many_worlds.cu
+                        many_worlds_pipeline.cpp
+                        many_worlds_renderer.cu
                         function_table_definition.cu
                         kernels.cu
-                        many_worlds.cu
                         scene.cu
                         mesh.cpp
                         antenna.cpp

@@ -32,8 +32,8 @@ public:
     Signal &GetSignal();
 
 protected:
-    friend class ForwardRenderer;
-    friend class InverseRenderer;
+    friend class Renderer;
+    friend class ManyWorldsRenderer;
     void PrepareRendering(Params &params, CUstream stream);
 
 private:

@@ -47,17 +47,24 @@ class Mesh:
             raise TypeError("many_worlds must be of type ManyWorlds")
 
         occupancy = many_worlds.GetOccupancy()
-        extent_min = many_worlds.GetMin().cuda()
-        extent_max = many_worlds.GetMax().cuda()
-        vertices, indices = marching_cubes.marching_cubes(occupancy[None, :, :, :], threshold)
+        padded_occupancy = torch.nn.functional.pad(occupancy, (1, 1, 1, 1, 1, 1), mode='constant', value=-100000)
+        vertices, indices = marching_cubes.marching_cubes(padded_occupancy[None, :, :, :], threshold)
         if type(vertices[0]) is torch.Tensor and type(indices[0]) is torch.Tensor:
             vertices = vertices[0]
             indices = indices[0].to(torch.uint32)
-            print(vertices.shape)
             tmp = vertices[:, 2].clone()
             vertices[:, 2] = vertices[:, 0]
             vertices[:, 0] = tmp
+            scale_correction = (torch.tensor(padded_occupancy.shape)) / (torch.tensor(occupancy.shape))
+            vertices[:, 0] = vertices[:, 0] * scale_correction[0]
+            vertices[:, 1] = vertices[:, 1] * scale_correction[1]
+            vertices[:, 2] = vertices[:, 2] * scale_correction[2]
+            extent_min = many_worlds.GetMin().cuda()
+            extent_max = many_worlds.GetMax().cuda()
             vertices = (vertices + 1.0) * 0.5 * (extent_max - extent_min) + extent_min
+
+            print(vertices.min(), vertices.max())
+
             self.mesh.SetVertices(vertices)
             self.mesh.SetIndices(indices)
         else:
