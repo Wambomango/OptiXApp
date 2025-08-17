@@ -185,7 +185,7 @@ static __forceinline__ __device__ void AddPerturbation(const uint3 &idx, const f
             receiver_offset = ray_offset + i * params.scene.signal.n_samples;
             for(int j = 0; j < params.scene.signal.n_samples; j++)
             {
-                result[receiver_offset + j] += reference[receiver_offset + j];
+                result[receiver_offset + j] += params.many_worlds.weight * reference[receiver_offset + j];
             }
         }
     }
@@ -207,7 +207,7 @@ static __forceinline__ __device__ void AddPerturbation(const uint3 &idx, const f
                 complex3 E_ref = reference[receiver_offset + j];
                 complex3 E_pert = perturbation[receiver_offset + j];
                 complex3 E_res = occupancy * E_pert + (1.0f - occupancy) * E_ref;
-                result[receiver_offset + j] += E_res;
+                result[receiver_offset + j] += params.many_worlds.weight * E_res;
             }
         }
     }
@@ -256,7 +256,7 @@ static __forceinline__ __device__ void PerturbRay(const uint3 &idx, const float3
             receiver_offset = ray_offset + i * params.scene.signal.n_samples;
             for(int j = 0; j < params.scene.signal.n_samples; j++)
             {
-                result[receiver_offset + j] += reference[receiver_offset + j];
+                result[receiver_offset + j] +=  params.many_worlds.weight * reference[receiver_offset + j];
             }
         }
     }

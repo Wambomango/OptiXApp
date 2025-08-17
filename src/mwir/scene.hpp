@@ -34,7 +34,7 @@ public:
 protected:
     friend class Renderer;
     friend class ManyWorldsRenderer;
-    void PrepareRendering(Params &params, CUstream stream);
+    torch::Tensor PrepareRendering(Params &params, std::optional<torch::Tensor> opt_result_tensor, CUstream stream);
 
 private:
     struct SceneData
@@ -75,6 +75,7 @@ private:
     void UpdateReceivers(Params &params, CUstream stream);
     void UpdateSignal(Params &params, CUstream stream);
     void UpdateBuffers(Params &params, CUstream stream);
+    torch::Tensor AllocateResultTensor(Params &params, std::optional<torch::Tensor> opt_result_tensor);
 
     std::shared_ptr<SceneData> data;
 };

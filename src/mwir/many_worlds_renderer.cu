@@ -21,29 +21,23 @@ ManyWorldsRenderer::~ManyWorldsRenderer()
 
 torch::Tensor ManyWorldsRenderer::Forward(Scene &scene, ManyWorlds &many_worlds, std::optional<torch::Tensor> opt_result_tensor, std::optional<int> seed)
 {
-    PrepareRendering(scene, many_worlds, seed); 
-    params.many_worlds.backward = false;   
-    torch::Tensor result_tensor = AllocateResultTensor(opt_result_tensor);
+    torch::Tensor result_tensor = PrepareForward(scene, many_worlds, opt_result_tensor, seed);
 
     for(int i = 0; i < params.scene.n_senders; i++)
     {
         RenderAntenna(i);
     }
     
-
-    MergeResults<<<dim3(params.scene.n_receivers, params.scene.signal.n_samples, 1), OPTIX_MAX_GRID_DIM, sizeof(complex3) * OPTIX_MAX_GRID_DIM, stream>>>(reinterpret_cast<Params *>(d_params), static_cast<complex3 *>(result_tensor.data_ptr()));
+    MergeResults<<<dim3(params.scene.n_receivers, params.scene.signal.n_samples, 1), OPTIX_MAX_GRID_DIM, sizeof(complex3) * OPTIX_MAX_GRID_DIM, stream>>>(reinterpret_cast<Params *>(d_params));
     CUDA_CHECK(cudaStreamSynchronize(stream));
 
     SPDLOG_INFO("Finished rendering");
     return result_tensor;
 }
 
-
-std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::Backward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &grad_output, std::optional<torch::Tensor> opt_grad_opacity, std::optional<torch::Tensor> opt_grad_normal, std::optional<int> seed)
+std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::Backward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &output_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, std::optional<int> seed)
 {
-    PrepareRendering(scene, many_worlds, seed);    
-    params.many_worlds.backward = true;
-    std::pair<torch::Tensor, torch::Tensor> grad_tensors = AllocateGradTensors(opt_grad_opacity, opt_grad_normal);
+    std::pair<torch::Tensor, torch::Tensor> grad_tensors = PrepareBackward(scene, many_worlds, output_gradient, opt_occupancy_gradient, opt_normal_gradient, seed);
 
     for(int i = 0; i < params.scene.n_senders; i++)
     {
@@ -55,11 +49,10 @@ std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::Backward(Scene &scen
     return grad_tensors;
 }
 
-void ManyWorldsRenderer::PrepareRendering(Scene &scene, ManyWorlds &many_worlds, std::optional<int> seed)
+torch::Tensor ManyWorldsRenderer::PrepareForward(Scene &scene, ManyWorlds &many_worlds, std::optional<torch::Tensor> opt_result_tensor, std::optional<int> seed)
 {
-    scene.PrepareRendering(params, stream);
-    many_worlds.PrepareRendering(params, stream);
- 
+    torch::Tensor result_tensor = scene.PrepareRendering(params, opt_result_tensor, stream);
+    many_worlds.PrepareForward(params, stream);
     if (seed.has_value())
     {
         params.seed = seed.value();
@@ -69,90 +62,44 @@ void ManyWorldsRenderer::PrepareRendering(Scene &scene, ManyWorlds &many_worlds,
         std::srand(static_cast<unsigned int>(std::time(nullptr)));
         params.seed = std::rand();
     }
-
     CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(d_params), &params, sizeof(Params), cudaMemcpyHostToDevice, stream));
-}
-
-torch::Tensor ManyWorldsRenderer::AllocateResultTensor(std::optional<torch::Tensor> opt_result_tensor)
-{
-    torch::Tensor result_tensor;
-    if(opt_result_tensor.has_value())
-    {
-        result_tensor = opt_result_tensor.value();
-         if(result_tensor.device().type() != torch::kCUDA)
-        { 
-            throw std::runtime_error("Result tensor must be on CUDA device");
-        }
-        if(result_tensor.dtype() != torch::kComplexFloat)
-        {           
-            throw std::runtime_error("Result tensor must have dtype torch::kComplexFloat");
-        }
-        if(result_tensor.dim() != 3 || result_tensor.size(2) != 3)
-        {            
-            throw std::runtime_error("Result tensor must have shape [n_receivers, n_samples, 3]");
-        }
-        if(result_tensor.size(0) != params.scene.n_receivers || result_tensor.size(1) != params.scene.signal.n_samples)
-        {
-            throw std::runtime_error("Result tensor does not match scene parameters: expected [" + std::to_string(params.scene.n_receivers) + ", " + std::to_string(params.scene.signal.n_samples) + ", 3], but got [" + std::to_string(result_tensor.size(0)) + ", " + std::to_string(result_tensor.size(1)) + ", 3]");
-        }
-    }
-    else
-    {
-        result_tensor = torch::empty({params.scene.n_receivers, params.scene.signal.n_samples, 3}, torch::dtype(torch::kComplexFloat).device(torch::kCUDA, 0));
-    }
     return result_tensor;
 }
 
-std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::AllocateGradTensors(std::optional<torch::Tensor> opt_grad_opacity, std::optional<torch::Tensor> opt_grad_normal)
+
+std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::PrepareBackward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &output_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, std::optional<int> seed)
 {
-    torch::Tensor grad_opacity, grad_normal;
-    int3 shape = params.many_worlds.shape;
-
-    if(opt_grad_opacity.has_value())
+    scene.PrepareRendering(params, std::nullopt, stream);
+    std::pair<torch::Tensor, torch::Tensor> grad_tensors = many_worlds.PrepareBackward(params, opt_occupancy_gradient, opt_normal_gradient, stream);
+    CheckOutputGradient(output_gradient);
+    if (seed.has_value())
     {
-        grad_opacity = opt_grad_opacity.value();
-        if(grad_opacity.device().type() != torch::kCUDA)
-        {
-            throw std::runtime_error("Opacity gradient tensor must be on CUDA device");
-        }
-        if(grad_opacity.dtype() != torch::kFloat32)
-        {
-            throw std::runtime_error("Opacity gradient tensor must have dtype torch::kFloat32");
-        }
-        if(grad_opacity.dim() != 3 || grad_opacity.size(0) != shape.x || grad_opacity.size(1) != shape.y || grad_opacity.size(2) != shape.z)
-        {
-            throw std::runtime_error("Opacity gradient tensor must have shape [" + std::to_string(shape.x) + ", " + std::to_string(shape.y) + ", " + std::to_string(shape.z) + "]");
-        }
+        params.seed = seed.value();
     }
     else
     {
-        grad_opacity = torch::empty({shape.x, shape.y, shape.z}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0));
+        std::srand(static_cast<unsigned int>(std::time(nullptr)));
+        params.seed = std::rand();
     }
-
-    if(opt_grad_normal.has_value())
-    {
-        grad_normal = opt_grad_normal.value();
-        if(grad_normal.device().type() != torch::kCUDA)
-        {
-            throw std::runtime_error("Normal gradient tensor must be on CUDA device");
-        }
-        if(grad_normal.dtype() != torch::kFloat32)
-        {
-            throw std::runtime_error("Normal gradient tensor must have dtype torch::kFloat32");
-        }
-        if(grad_normal.dim() != 4 || grad_normal.size(0) != shape.x || grad_normal.size(1) != shape.y || grad_normal.size(2) != shape.z || grad_normal.size(3) != 3)
-        {
-            throw std::runtime_error("Normal gradient tensor must have shape [" + std::to_string(shape.x) + ", " + std::to_string(shape.y) + ", " + std::to_string(shape.z) + ", 3]");
-        }
-    }
-    else
-    {
-        grad_normal = torch::empty({shape.x, shape.y, shape.z, 3}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0));
-    }
-
-    return {grad_opacity, grad_normal};
+    CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(d_params), &params, sizeof(Params), cudaMemcpyHostToDevice, stream));
+    return grad_tensors;
 }
 
+void ManyWorldsRenderer::CheckOutputGradient(torch::Tensor &output_gradient)
+{
+    if (output_gradient.device().type() != torch::kCUDA)
+    {
+        throw std::runtime_error("Output gradient must be on CUDA device");
+    }
+    if (output_gradient.dtype() != torch::kComplexFloat)
+    {
+        throw std::runtime_error("Output gradient must have dtype torch::kComplexFloat");
+    }
+    if (output_gradient.dim() != 3 || output_gradient.size(0) != params.scene.n_receivers || output_gradient.size(1) != params.scene.signal.n_samples || output_gradient.size(2) != 3)
+    {
+        throw std::runtime_error("Output gradient must have shape [n_receivers, n_samples, 3]");
+    }
+}
 
 void ManyWorldsRenderer::RenderAntenna(int sender_index)
 {

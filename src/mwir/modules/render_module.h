@@ -17,6 +17,7 @@ struct alignas(16) SceneParams
     AntennaData *d_receivers;
     SignalData signal;
     complex3 *result;
+    complex3 *merged_result;
 };
 
 struct alignas(16) ManyWorldsParams
@@ -26,14 +27,16 @@ struct alignas(16) ManyWorldsParams
     float resolution;
     int n_samples;
     int3 shape;
+    float weight;
     bool backward;
 
     float *occupancy;
+    float *occupancy_gradient;
     float3 *normal;
+    float3 *normal_gradient;
 
     complex3 *reference;
     complex3 *perturbation;
-
     OptixTraversableHandle mesh_handle;
 };
 

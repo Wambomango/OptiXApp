@@ -36,8 +36,9 @@ class ManyWorlds
         
     protected:
         friend class ManyWorldsRenderer;
-        void PrepareRendering(Params& params, CUstream stream);
-        
+        void PrepareForward(Params& params, CUstream stream);
+        std::pair<torch::Tensor, torch::Tensor> PrepareBackward(Params& params, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, CUstream stream);
+
     private:
         struct ManyWorldsData
         {
@@ -64,9 +65,12 @@ class ManyWorlds
             }
         };
 
+        void PrepareRendering(Params& params, bool backward, CUstream stream);
         void UpdateShape();
         void UpdateBoundingBox(Params& params, CUstream stream);
         void UpdateBuffers(Params& params, CUstream stream);
+        std::pair<torch::Tensor, torch::Tensor> AllocateGradTensors(Params &params, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient);
+
 
         std::shared_ptr<ManyWorldsData> data;
 };

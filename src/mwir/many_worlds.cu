@@ -171,22 +171,19 @@ void ManyWorlds::UpdateNormal()
     }
 }
 
-void ManyWorlds::PrepareRendering(Params& params, CUstream stream)
+void ManyWorlds::PrepareForward(Params& params, CUstream stream)
 {
-    params.many_worlds.min = make_float3(data->min.x, data->min.y, data->min.z);
-    params.many_worlds.max = make_float3(data->max.x, data->max.y, data->max.z);
-    params.many_worlds.resolution = data->resolution;
-    params.many_worlds.n_samples = data->n_samples;
-    params.many_worlds.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
-    params.many_worlds.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
-    params.many_worlds.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
-    if(!(data->occupancy.is_cuda() && data->normal.is_cuda()))
-    {
-        throw std::runtime_error("Both occupancy and normal tensors must be on the same CUDA device.");
-    }
-    UpdateBoundingBox(params, stream);
-    UpdateBuffers(params, stream);
+    PrepareRendering(params, false, stream);
+    params.many_worlds.backward = false;
 }
+
+
+std::pair<torch::Tensor, torch::Tensor> ManyWorlds::PrepareBackward(Params& params, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, CUstream stream)
+{
+    PrepareRendering(params, true, stream);
+    return AllocateGradTensors(params, opt_occupancy_gradient, opt_normal_gradient);
+}
+
 
 void ManyWorlds::UpdateShape()
 {
@@ -253,10 +250,77 @@ void ManyWorlds::UpdateBuffers(Params &params, CUstream stream)
         CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_reference), data->buffer_bytes, stream));
         CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_perturbation), data->buffer_bytes, stream));
     }
-    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(data->d_reference), 0, data->buffer_bytes, stream));
-    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(data->d_perturbation), 0, data->buffer_bytes, stream));
     params.many_worlds.reference = reinterpret_cast<complex3 *>(data->d_reference);
     params.many_worlds.perturbation = reinterpret_cast<complex3 *>(data->d_perturbation);
+}
+
+void ManyWorlds::PrepareRendering(Params& params, bool backward, CUstream stream)
+{
+    params.many_worlds.min = make_float3(data->min.x, data->min.y, data->min.z);
+    params.many_worlds.max = make_float3(data->max.x, data->max.y, data->max.z);
+    params.many_worlds.resolution = data->resolution;
+    params.many_worlds.n_samples = data->n_samples;
+    params.many_worlds.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
+    params.many_worlds.weight = 1.0f / data->n_samples;
+    params.many_worlds.backward = backward;
+    params.many_worlds.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
+    params.many_worlds.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
+    if(!(data->occupancy.is_cuda() && data->normal.is_cuda()))
+    {
+        throw std::runtime_error("Both occupancy and normal tensors must be on the same CUDA device.");
+    }
+    UpdateBoundingBox(params, stream);
+    UpdateBuffers(params, stream);
+}
+
+std::pair<torch::Tensor, torch::Tensor> ManyWorlds::AllocateGradTensors(Params &params, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient)
+{
+    torch::Tensor occupancy_gradient, normal_gradient;
+    int3 shape = params.many_worlds.shape;
+    if(opt_occupancy_gradient.has_value())
+    {
+        occupancy_gradient = opt_occupancy_gradient.value();
+        if(occupancy_gradient.device().type() != torch::kCUDA)
+        {
+            throw std::runtime_error("Occupancy gradient tensor must be on CUDA device");
+        }
+        if(occupancy_gradient.dtype() != torch::kFloat32)
+        {
+            throw std::runtime_error("Occupancy gradient tensor must have dtype torch::kFloat32");
+        }
+        if(occupancy_gradient.dim() != 3 || occupancy_gradient.size(0) != shape.x || occupancy_gradient.size(1) != shape.y || occupancy_gradient.size(2) != shape.z)
+        {
+            throw std::runtime_error("Occupancy gradient tensor must have shape [" + std::to_string(shape.x) + ", " + std::to_string(shape.y) + ", " + std::to_string(shape.z) + "]");
+        }
+    }
+    else
+    {
+        occupancy_gradient = torch::zeros({shape.x, shape.y, shape.z}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0));
+    }
+
+    if(opt_normal_gradient.has_value())
+    {
+        normal_gradient = opt_normal_gradient.value();
+        if(normal_gradient.device().type() != torch::kCUDA)
+        {
+            throw std::runtime_error("Normal gradient tensor must be on CUDA device");
+        }
+        if(normal_gradient.dtype() != torch::kFloat32)
+        {
+            throw std::runtime_error("Normal gradient tensor must have dtype torch::kFloat32");
+        }
+        if(normal_gradient.dim() != 4 || normal_gradient.size(0) != shape.x || normal_gradient.size(1) != shape.y || normal_gradient.size(2) != shape.z || normal_gradient.size(3) != 3)
+        {
+            throw std::runtime_error("Normal gradient tensor must have shape [" + std::to_string(shape.x) + ", " + std::to_string(shape.y) + ", " + std::to_string(shape.z) + ", 3]");
+        }
+    }
+    else
+    {
+        normal_gradient = torch::zeros({shape.x, shape.y, shape.z, 3}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0));
+    }
+    params.many_worlds.occupancy_gradient = reinterpret_cast<float*>(occupancy_gradient.data_ptr());
+    params.many_worlds.normal_gradient = reinterpret_cast<float3*>(normal_gradient.data_ptr());
+    return {occupancy_gradient, normal_gradient};
 }
 
 }

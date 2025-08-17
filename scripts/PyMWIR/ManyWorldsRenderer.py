@@ -9,20 +9,21 @@ class ManyWorldsRendererFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, occupancy, normals, payload):
         inverse_renderer, scene, many_worlds, output, seed = payload
-
         result = inverse_renderer.Forward(scene.scene, many_worlds.many_worlds, output, seed)
-
-        ctx.save_for_backward(result)
+        ctx.inverse_renderer = inverse_renderer
+        ctx.scene = scene
+        ctx.many_worlds = many_worlds
+        ctx.seed = seed
         return result
 
     @staticmethod
     def backward(ctx, grad_output):
-        result = ctx.saved_tensors
-
-        print(grad_output)
-        return None, None, None 
-
-
+        inverse_renderer = ctx.inverse_renderer
+        scene = ctx.scene
+        many_worlds = ctx.many_worlds
+        seed = ctx.seed
+        occupancy_gradient, normal_gradient = inverse_renderer.Backward(scene.scene, many_worlds.many_worlds, grad_output, None, None, seed)
+        return occupancy_gradient, normal_gradient, None 
 
 
 

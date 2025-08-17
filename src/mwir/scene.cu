@@ -108,13 +108,14 @@ Signal &Scene::GetSignal()
     return data->signal;
 }
 
-void Scene::PrepareRendering(Params &params, CUstream stream)
+torch::Tensor Scene::PrepareRendering(Params &params, std::optional<torch::Tensor> opt_result_tensor, CUstream stream)
 {
     UpdateMesh(params, stream);
     UpdateSenders(params, stream);
     UpdateReceivers(params, stream);
     UpdateSignal(params, stream);
     UpdateBuffers(params, stream);
+    return AllocateResultTensor(params, opt_result_tensor);
 }
 
 void Scene::UpdateMesh(Params &params, CUstream stream)
@@ -159,7 +160,6 @@ void Scene::UpdateSenders(Params &params, CUstream stream)
     params.scene.n_senders = static_cast<unsigned int>(data->senders.size());
     params.scene.d_senders = reinterpret_cast<AntennaData *>(data->d_senders);
     params.scene.h_senders = data->h_senders.data();
-
 }
 
 void Scene::UpdateReceivers(Params &params, CUstream stream)
@@ -212,6 +212,38 @@ void Scene::UpdateBuffers(Params &params, CUstream stream)
     }
     CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(data->d_result), 0, data->buffer_bytes, stream));
     params.scene.result = reinterpret_cast<complex3 *>(data->d_result);
+}
+
+
+torch::Tensor Scene::AllocateResultTensor(Params &params,std::optional<torch::Tensor> opt_result_tensor)
+{
+    torch::Tensor result_tensor;
+    if(opt_result_tensor.has_value())
+    {
+        result_tensor = opt_result_tensor.value();
+         if(result_tensor.device().type() != torch::kCUDA)
+        { 
+            throw std::runtime_error("Result tensor must be on CUDA device");
+        }
+        if(result_tensor.dtype() != torch::kComplexFloat)
+        {           
+            throw std::runtime_error("Result tensor must have dtype torch::kComplexFloat");
+        }
+        if(result_tensor.dim() != 3 || result_tensor.size(2) != 3)
+        {            
+            throw std::runtime_error("Result tensor must have shape [n_receivers, n_samples, 3]");
+        }
+        if(result_tensor.size(0) != params.scene.n_receivers || result_tensor.size(1) != params.scene.signal.n_samples)
+        {
+            throw std::runtime_error("Result tensor does not match scene parameters: expected [" + std::to_string(params.scene.n_receivers) + ", " + std::to_string(params.scene.signal.n_samples) + ", 3], but got [" + std::to_string(result_tensor.size(0)) + ", " + std::to_string(result_tensor.size(1)) + ", 3]");
+        }
+    }
+    else
+    {
+        result_tensor = torch::zeros({params.scene.n_receivers, params.scene.signal.n_samples, 3}, torch::dtype(torch::kComplexFloat).device(torch::kCUDA, 0));
+    }
+    params.scene.merged_result = reinterpret_cast<complex3 *>(result_tensor.data_ptr());
+    return result_tensor;
 }
 
 }

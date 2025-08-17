@@ -5,7 +5,7 @@ __global__ void SetAntenna(Params *params, int antenna_index)
     params->antenna_index = antenna_index;
 }
 
-__global__ void MergeResults(Params *params, complex3 *result)
+__global__ void MergeResults(Params *params)
 {
     __shared__ complex3 shared_result[OPTIX_MAX_GRID_DIM];
 
@@ -33,6 +33,6 @@ __global__ void MergeResults(Params *params, complex3 *result)
             sum += shared_result[i];
         }
 
-        result[antenna_index * params->scene.signal.n_samples + frequency_index] = sum;
+        params->scene.merged_result[antenna_index * params->scene.signal.n_samples + frequency_index] = sum;
     }
 }   
