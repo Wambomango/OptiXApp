@@ -26,6 +26,7 @@ struct alignas(16) ManyWorldsParams
     float resolution;
     int n_samples;
     int3 shape;
+    bool backward;
 
     float *occupancy;
     float3 *normal;

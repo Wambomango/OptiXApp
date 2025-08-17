@@ -126,18 +126,14 @@ extern "C" __global__ void __miss__geometry()
 extern "C" __global__ void __closesthit__geometry()
 {
     uint3 idx = optixGetLaunchIndex();
-    uint3 dim = optixGetLaunchDimensions();
-
     float3 p_hit = optixGetWorldRayOrigin() + optixGetWorldRayDirection() * optixGetRayTmax();
     float3 vertices[3] = {};
     optixGetTriangleVertexData(optixGetGASTraversableHandle(), optixGetPrimitiveIndex(), optixGetSbtGASIndex(), 0, vertices );
     float3 n_hit = normalize( cross( vertices[1] - vertices[0], vertices[2] - vertices[0] ) );
-
     if(dot(n_hit, optixGetWorldRayDirection()) >= 0.0f)
     {
         return;
     }
-
     CalculateE(idx, optixGetWorldRayDirection(), p_hit, n_hit, params.scene.result);
 }
 

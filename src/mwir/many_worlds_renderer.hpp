@@ -22,11 +22,12 @@ public:
     ManyWorldsRenderer& operator=(ManyWorldsRenderer&&) = delete;
 
     torch::Tensor Forward(Scene &scene, ManyWorlds &many_worlds, std::optional<torch::Tensor> result_tensor = std::nullopt, std::optional<int> seed = std::nullopt);
-    void Backward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &grad_output, std::optional<int> seed = std::nullopt);
+    std::pair<torch::Tensor, torch::Tensor> Backward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &grad_output, std::optional<torch::Tensor> opt_grad_opacity, std::optional<torch::Tensor> opt_grad_normal, std::optional<int> seed);
 
 private:
     void PrepareRendering(Scene &scene, ManyWorlds &many_worlds, std::optional<int> seed);
     torch::Tensor AllocateResultTensor(std::optional<torch::Tensor> result_tensor);
+    std::pair<torch::Tensor, torch::Tensor> AllocateGradTensors(std::optional<torch::Tensor> opt_grad_opacity, std::optional<torch::Tensor> opt_grad_normal);
     void RenderAntenna(int sender_index);
 
     ManyWorldsPipeline many_worlds_pipeline;

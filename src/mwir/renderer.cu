@@ -21,7 +21,7 @@ Renderer::~Renderer()
 torch::Tensor Renderer::Render(Scene &scene, std::optional<torch::Tensor> opt_result_tensor, std::optional<int> seed)
 {   
     PrepareRendering(scene, seed);   
-    torch::Tensor result_tensor = AllocateResultTensor(opt_result_tensor);
+    torch::Tensor result_tensor = AllocateResultTensor(opt_result_tensor); 
 
     for(int i = 0; i < params.scene.n_senders; i++)
     {
@@ -84,6 +84,7 @@ torch::Tensor Renderer::AllocateResultTensor(std::optional<torch::Tensor> opt_re
 void Renderer::RenderAntenna(int sender_index)
 {
     SPDLOG_INFO("Rendering antenna {} with {} rays", sender_index, params.scene.h_senders[sender_index].n_rays);
+
     SetAntenna<<<1, 1, 0, stream>>>(reinterpret_cast<Params *>(d_params), sender_index);
     OPTIX_CHECK(optixLaunch(pipeline.pipeline->Handle(), stream, d_params, sizeof(Params), &pipeline.sbt, OPTIX_MAX_GRID_DIM, OPTIX_MAX_GRID_DIM, 1));
 }

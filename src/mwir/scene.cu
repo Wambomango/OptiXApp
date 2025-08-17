@@ -115,84 +115,75 @@ void Scene::PrepareRendering(Params &params, CUstream stream)
     UpdateReceivers(params, stream);
     UpdateSignal(params, stream);
     UpdateBuffers(params, stream);
-
-    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(params.scene.result), 0, data->buffer_bytes, stream));
 }
 
 void Scene::UpdateMesh(Params &params, CUstream stream)
 {
-    if (!(data->mesh_updated || data->mesh.data->vertices_updated || data->mesh.data->indices_updated))
+    if (data->mesh_updated || data->mesh.data->vertices_updated || data->mesh.data->indices_updated)
     {
-        return;
+        data->mesh_updated = false;
+        data->mesh.data->vertices_updated = false;
+        CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_mesh), stream));
+        torch::Tensor vertices = data->mesh.GetVertices();
+        torch::Tensor indices = data->mesh.GetIndices();
+        std::pair<OptixTraversableHandle, CUdeviceptr> gas = OptiX::BuildGAS(vertices, indices, Context::GetInstance().Handle(), stream);
+        data->mesh_handle = gas.first;
+        data->d_mesh = gas.second;
     }
-    data->mesh_updated = false;
-    data->mesh.data->vertices_updated = false;
-
-    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_mesh), stream));
-    torch::Tensor vertices = data->mesh.GetVertices();
-    torch::Tensor indices = data->mesh.GetIndices();
-    std::pair<OptixTraversableHandle, CUdeviceptr> gas = OptiX::BuildGAS(vertices, indices, Context::GetInstance().Handle(), stream);
-    data->mesh_handle = gas.first;
-    data->d_mesh = gas.second;
-
     params.scene.mesh_handle = data->mesh_handle;
 }
 
 void Scene::UpdateSenders(Params &params, CUstream stream)
 {
-    if (!data->senders_updated)
+    if (data->senders_updated)
     {
-        return;
+        data->senders_updated = false;
+        CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_senders), stream));
+        CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_senders), data->senders.size() * sizeof(AntennaData), stream));
+        data->h_senders.resize(data->senders.size());
+        for (size_t i = 0; i < data->senders.size(); ++i)
+        {
+            data->h_senders[i].position = float3{data->senders[i].GetPosition().x, data->senders[i].GetPosition().y, data->senders[i].GetPosition().z};
+            data->h_senders[i].forward = float3{data->senders[i].GetRotationMatrix()[0].x, data->senders[i].GetRotationMatrix()[0].y, data->senders[i].GetRotationMatrix()[0].z};
+            data->h_senders[i].left = float3{data->senders[i].GetRotationMatrix()[1].x, data->senders[i].GetRotationMatrix()[1].y, data->senders[i].GetRotationMatrix()[1].z};
+            data->h_senders[i].up = float3{data->senders[i].GetRotationMatrix()[2].x, data->senders[i].GetRotationMatrix()[2].y, data->senders[i].GetRotationMatrix()[2].z};
+            data->h_senders[i].fov = float2{data->senders[i].GetFOV().x, data->senders[i].GetFOV().y};
+            data->h_senders[i].ray_density = data->senders[i].GetRayDensity();
+            data->h_senders[i].solid_angle = data->senders[i].GetSolidAngle();
+            data->h_senders[i].n_rays = data->senders[i].GetNRays();
+            data->h_senders[i].n_batches = data->senders[i].GetNBatches();
+        }
     }
-    data->senders_updated = false;
 
-    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_senders), stream));
-    CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_senders), data->senders.size() * sizeof(AntennaData), stream));
-    data->h_senders.resize(data->senders.size());
-    for (size_t i = 0; i < data->senders.size(); ++i)
-    {
-        data->h_senders[i].position = float3{data->senders[i].GetPosition().x, data->senders[i].GetPosition().y, data->senders[i].GetPosition().z};
-        data->h_senders[i].forward = float3{data->senders[i].GetRotationMatrix()[0].x, data->senders[i].GetRotationMatrix()[0].y, data->senders[i].GetRotationMatrix()[0].z};
-        data->h_senders[i].left = float3{data->senders[i].GetRotationMatrix()[1].x, data->senders[i].GetRotationMatrix()[1].y, data->senders[i].GetRotationMatrix()[1].z};
-        data->h_senders[i].up = float3{data->senders[i].GetRotationMatrix()[2].x, data->senders[i].GetRotationMatrix()[2].y, data->senders[i].GetRotationMatrix()[2].z};
-        data->h_senders[i].fov = float2{data->senders[i].GetFOV().x, data->senders[i].GetFOV().y};
-        data->h_senders[i].ray_density = data->senders[i].GetRayDensity();
-        data->h_senders[i].solid_angle = data->senders[i].GetSolidAngle();
-        data->h_senders[i].n_rays = data->senders[i].GetNRays();
-        data->h_senders[i].n_batches = data->senders[i].GetNBatches();
-    }
     CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(data->d_senders), data->h_senders.data(), data->senders.size() * sizeof(AntennaData), cudaMemcpyHostToDevice, stream));
-
     params.scene.n_senders = static_cast<unsigned int>(data->senders.size());
     params.scene.d_senders = reinterpret_cast<AntennaData *>(data->d_senders);
     params.scene.h_senders = data->h_senders.data();
+
 }
 
 void Scene::UpdateReceivers(Params &params, CUstream stream)
 {
-    if (!data->receivers_updated)
+    if (data->receivers_updated)
     {
-        return;
+        data->receivers_updated = false;
+        CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_receivers), stream));
+        CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_receivers), data->receivers.size() * sizeof(AntennaData), stream));
+        data->h_receivers.resize(data->receivers.size());
+        for (size_t i = 0; i < data->receivers.size(); ++i)
+        {
+            data->h_receivers[i].position = float3{data->receivers[i].GetPosition().x, data->receivers[i].GetPosition().y, data->receivers[i].GetPosition().z};
+            data->h_receivers[i].forward = float3{data->receivers[i].GetRotationMatrix()[0].x, data->receivers[i].GetRotationMatrix()[0].y, data->receivers[i].GetRotationMatrix()[0].z};
+            data->h_receivers[i].left = float3{data->receivers[i].GetRotationMatrix()[1].x, data->receivers[i].GetRotationMatrix()[1].y, data->receivers[i].GetRotationMatrix()[1].z};
+            data->h_receivers[i].up = float3{data->receivers[i].GetRotationMatrix()[2].x, data->receivers[i].GetRotationMatrix()[2].y, data->receivers[i].GetRotationMatrix()[2].z};
+            data->h_receivers[i].fov = float2{data->receivers[i].GetFOV().x, data->receivers[i].GetFOV().y};
+            data->h_receivers[i].ray_density = data->receivers[i].GetRayDensity();
+            data->h_receivers[i].solid_angle = data->receivers[i].GetSolidAngle();
+            data->h_receivers[i].n_rays = data->receivers[i].GetNRays();
+            data->h_receivers[i].n_batches = data->receivers[i].GetNBatches();
+        }
+        CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(data->d_receivers), data->h_receivers.data(), data->receivers.size() * sizeof(AntennaData), cudaMemcpyHostToDevice, stream));
     }
-    data->receivers_updated = false;
-
-    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_receivers), stream));
-    CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_receivers), data->receivers.size() * sizeof(AntennaData), stream));
-    data->h_receivers.resize(data->receivers.size());
-    for (size_t i = 0; i < data->receivers.size(); ++i)
-    {
-        data->h_receivers[i].position = float3{data->receivers[i].GetPosition().x, data->receivers[i].GetPosition().y, data->receivers[i].GetPosition().z};
-        data->h_receivers[i].forward = float3{data->receivers[i].GetRotationMatrix()[0].x, data->receivers[i].GetRotationMatrix()[0].y, data->receivers[i].GetRotationMatrix()[0].z};
-        data->h_receivers[i].left = float3{data->receivers[i].GetRotationMatrix()[1].x, data->receivers[i].GetRotationMatrix()[1].y, data->receivers[i].GetRotationMatrix()[1].z};
-        data->h_receivers[i].up = float3{data->receivers[i].GetRotationMatrix()[2].x, data->receivers[i].GetRotationMatrix()[2].y, data->receivers[i].GetRotationMatrix()[2].z};
-        data->h_receivers[i].fov = float2{data->receivers[i].GetFOV().x, data->receivers[i].GetFOV().y};
-        data->h_receivers[i].ray_density = data->receivers[i].GetRayDensity();
-        data->h_receivers[i].solid_angle = data->receivers[i].GetSolidAngle();
-        data->h_receivers[i].n_rays = data->receivers[i].GetNRays();
-        data->h_receivers[i].n_batches = data->receivers[i].GetNBatches();
-    }
-    CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(data->d_receivers), data->h_receivers.data(), data->receivers.size() * sizeof(AntennaData), cudaMemcpyHostToDevice, stream));
-
     params.scene.n_receivers = static_cast<unsigned int>(data->receivers.size());
     params.scene.h_receivers = data->h_receivers.data();
     params.scene.d_receivers = reinterpret_cast<AntennaData *>(data->d_receivers);
@@ -200,11 +191,10 @@ void Scene::UpdateReceivers(Params &params, CUstream stream)
 
 void Scene::UpdateSignal(Params &params, CUstream stream)
 {
-    if (!data->signal_updated)
+    if (data->signal_updated)
     {
-        return;
+        data->signal_updated = false;
     }
-    data->signal_updated = false;
 
     params.scene.signal.frequency_range = float2{data->signal.GetFrequencyRange().x, data->signal.GetFrequencyRange().y};
     params.scene.signal.n_samples = data->signal.GetNSamples();
@@ -214,15 +204,13 @@ void Scene::UpdateSignal(Params &params, CUstream stream)
 void Scene::UpdateBuffers(Params &params, CUstream stream)
 {
     size_t new_buffer_bytes = OPTIX_MAX_GRID_DIM * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples * sizeof(complex3);
-    if(new_buffer_bytes == data->buffer_bytes)
+    if(new_buffer_bytes != data->buffer_bytes)
     {
-        return;
+        data->buffer_bytes = new_buffer_bytes;
+        CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_result), stream));
+        CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_result), data->buffer_bytes, stream));
     }
-    data->buffer_bytes = new_buffer_bytes;
-
-    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_result), stream));
-    CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_result), data->buffer_bytes, stream));
-
+    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(data->d_result), 0, data->buffer_bytes, stream));
     params.scene.result = reinterpret_cast<complex3 *>(data->d_result);
 }
 

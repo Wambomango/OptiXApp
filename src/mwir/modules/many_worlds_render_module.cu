@@ -62,12 +62,6 @@ static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3
 
         if(__uint_as_float(p0) > 0.0f)
         {
-            // if(result == params.many_worlds.perturbation)
-            // {
-            //     printf("p_hit: %.2f, %.2f, %.2f\n", p_hit.x, p_hit.y, p_hit.z);
-            // }
-
-
             continue; 
         }
         
@@ -80,12 +74,10 @@ static __device__ void CalculateE(uint3 idx, float3 dir_tx, float3 p_hit, float3
             A_rx = vec_rx * expf(minusjomega * INV_C0 * dist_total);
             E_rx = minusjomega * A_rx;
             E_rx = E_rx - dot(E_rx, dir_rx) * dir_rx;
-            result[receiver_offset + j] += E_rx;
+            result[receiver_offset + j] = E_rx;
         }
     }
 }
-
-
 
 
 static __forceinline__ __device__ int LinearizeIndex(const int &x, const int &y, const int &z)
@@ -303,6 +295,7 @@ extern "C" __global__ void __raygen__rg()
     for(int i = 0; i < sender.n_batches; i++)
     {   
         dir_tx = SampleDir(sender, rand_state);
+
         optixTrace( params.scene.mesh_handle,
                     p_tx,
                     dir_tx,

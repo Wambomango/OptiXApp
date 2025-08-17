@@ -178,93 +178,83 @@ void ManyWorlds::PrepareRendering(Params& params, CUstream stream)
     params.many_worlds.resolution = data->resolution;
     params.many_worlds.n_samples = data->n_samples;
     params.many_worlds.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
-    if(!(data->normal.is_cuda() && data->occupancy.is_cuda()))
+    params.many_worlds.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
+    params.many_worlds.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
+    if(!(data->occupancy.is_cuda() && data->normal.is_cuda()))
     {
         throw std::runtime_error("Both occupancy and normal tensors must be on the same CUDA device.");
     }
-    params.many_worlds.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
-    params.many_worlds.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
-
-    UpdateBBMesh(params, stream);
+    UpdateBoundingBox(params, stream);
     UpdateBuffers(params, stream);
-
-    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(params.many_worlds.reference), 0, data->buffer_bytes, stream));
-    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(params.many_worlds.perturbation), 0, data->buffer_bytes, stream));
 }
 
 void ManyWorlds::UpdateShape()
 {
-    data->shape = {static_cast<int>(std::ceil((data->max.x - data->min.x) / data->resolution)),
-            static_cast<int>(std::ceil((data->max.y - data->min.y) / data->resolution)),
-            static_cast<int>(std::ceil((data->max.z - data->min.z) / data->resolution))};
-
-    if (data->shape.x <= 0 || data->shape.y <= 0 || data->shape.z <= 0)
+    glm::ivec3 new_shape = {static_cast<int>(std::ceil((data->max.x - data->min.x) / data->resolution)),
+                            static_cast<int>(std::ceil((data->max.y - data->min.y) / data->resolution)),
+                            static_cast<int>(std::ceil((data->max.z - data->min.z) / data->resolution))};
+    if (new_shape.x <= 0 || new_shape.y <= 0 || new_shape.z <= 0)
     {
         throw std::invalid_argument("Shape dimensions must be positive. Check min, max, and resolution values.");
     }
 
-    data->max.x = data->min.x + data->shape[0] * data->resolution;
-    data->max.y = data->min.y + data->shape[1] * data->resolution;
-    data->max.z = data->min.z + data->shape[2] * data->resolution;
-
-    if (data->shape[0] != data->occupancy.size(0) ||  data->shape[1] != data->occupancy.size(1) || data->shape[2] != data->occupancy.size(2))
+    if(new_shape.x != data->shape.x || new_shape.y != data->shape.y || new_shape.z != data->shape.z)
     {
-        data->occupancy = torch::zeros({data->shape[0], data->shape[1], data->shape[2]}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0).requires_grad(true));
-        data->normal = torch::zeros({data->shape[0], data->shape[1], data->shape[2], 3}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0));
+        data->shape = new_shape;
+        data->max.x = data->min.x + data->shape.x * data->resolution;
+        data->max.y = data->min.y + data->shape.y * data->resolution;
+        data->max.z = data->min.z + data->shape.z * data->resolution;
+        data->occupancy = torch::zeros({data->shape.x, data->shape.y, data->shape.z}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0).requires_grad(true));
+        data->normal = torch::zeros({data->shape.x, data->shape.y, data->shape.z, 3}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0));
         UpdateNormal();
     }
 }
 
-void ManyWorlds::UpdateBBMesh(Params& params, CUstream stream)
+void ManyWorlds::UpdateBoundingBox(Params& params, CUstream stream)
 {
-    if(!(data->min_updated || data->max_updated))
+    if(data->min_updated || data->max_updated)
     {
-        return;
+        data->min_updated = false;
+        data->max_updated = false;
+        CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_mesh), stream));
+        torch::Tensor vertices = torch::tensor({
+            {data->min.x, data->min.y, data->min.z},
+            {data->max.x, data->min.y, data->min.z},
+            {data->max.x, data->max.y, data->min.z},
+            {data->min.x, data->max.y, data->min.z},
+            {data->min.x, data->min.y, data->max.z},
+            {data->max.x, data->min.y, data->max.z},
+            {data->max.x, data->max.y, data->max.z},
+            {data->min.x, data->max.y, data->max.z}
+        }, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0));
+        torch::Tensor indices = torch::tensor({
+            {0, 1, 2}, {0, 2, 3},
+            {4, 5, 6}, {4, 6, 7},
+            {0, 1, 5}, {0, 5, 4},
+            {2, 3, 7}, {2, 7, 6},
+            {1, 2, 6}, {1, 6, 5},
+            {3, 0, 4}, {3, 4, 7}
+        }, torch::dtype(torch::kUInt32).device(torch::kCUDA, 0));
+        std::pair<OptixTraversableHandle, CUdeviceptr> gas = OptiX::BuildGAS(vertices, indices, Context::GetInstance().Handle(), stream);
+        data->mesh_handle = gas.first;
+        data->d_mesh = gas.second;
     }
-    data->min_updated = false;
-    data->max_updated = false;
-    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_mesh), stream));
-
-    torch::Tensor vertices = torch::tensor({
-        {data->min.x, data->min.y, data->min.z},
-        {data->max.x, data->min.y, data->min.z},
-        {data->max.x, data->max.y, data->min.z},
-        {data->min.x, data->max.y, data->min.z},
-        {data->min.x, data->min.y, data->max.z},
-        {data->max.x, data->min.y, data->max.z},
-        {data->max.x, data->max.y, data->max.z},
-        {data->min.x, data->max.y, data->max.z}
-    }, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0));
-    torch::Tensor indices = torch::tensor({
-        {0, 1, 2}, {0, 2, 3},
-        {4, 5, 6}, {4, 6, 7},
-        {0, 1, 5}, {0, 5, 4},
-        {2, 3, 7}, {2, 7, 6},
-        {1, 2, 6}, {1, 6, 5},
-        {3, 0, 4}, {3, 4, 7}
-    }, torch::dtype(torch::kUInt32).device(torch::kCUDA, 0));
-    
-    std::pair<OptixTraversableHandle, CUdeviceptr> gas = OptiX::BuildGAS(vertices, indices, Context::GetInstance().Handle(), stream);
-
-    data->mesh_handle = gas.first;
-    data->d_mesh = gas.second;
-
     params.many_worlds.mesh_handle = data->mesh_handle;
 }
 
 void ManyWorlds::UpdateBuffers(Params &params, CUstream stream)
 {
     size_t new_buffer_bytes = OPTIX_MAX_GRID_DIM * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples * sizeof(complex3);
-    if(new_buffer_bytes == data->buffer_bytes)
+    if(new_buffer_bytes != data->buffer_bytes)
     {
-        return;
+        data->buffer_bytes = new_buffer_bytes;
+        CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_reference), stream));
+        CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_perturbation), stream));
+        CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_reference), data->buffer_bytes, stream));
+        CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_perturbation), data->buffer_bytes, stream));
     }
-    data->buffer_bytes = new_buffer_bytes;
-    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_reference), stream));
-    CUDA_CHECK(cudaFreeAsync(reinterpret_cast<void *>(data->d_perturbation), stream));
-    CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_reference), data->buffer_bytes, stream));
-    CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void **>(&data->d_perturbation), data->buffer_bytes, stream));
-
+    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(data->d_reference), 0, data->buffer_bytes, stream));
+    CUDA_CHECK(cudaMemsetAsync(reinterpret_cast<void *>(data->d_perturbation), 0, data->buffer_bytes, stream));
     params.many_worlds.reference = reinterpret_cast<complex3 *>(data->d_reference);
     params.many_worlds.perturbation = reinterpret_cast<complex3 *>(data->d_perturbation);
 }

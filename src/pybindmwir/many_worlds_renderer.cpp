@@ -18,14 +18,14 @@ torch::Tensor ManyWorldsRenderer::Forward(std::shared_ptr<Scene> scene, std::sha
     return mwir_renderer_->Forward(*scene->mwir_scene_, *many_worlds->mwir_many_worlds_, result_tensor, seed);
 }
 
-void ManyWorldsRenderer::Backward(std::shared_ptr<Scene> scene, std::shared_ptr<ManyWorlds> many_worlds, torch::Tensor grad_output, std::optional<int> seed)
+std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::Backward(std::shared_ptr<Scene> scene, std::shared_ptr<ManyWorlds> many_worlds, torch::Tensor grad_output, std::optional<torch::Tensor> grad_opacity, std::optional<torch::Tensor> grad_normal, std::optional<int> seed)
 {
     if (!mwir_renderer_)
     {
         throw std::runtime_error("ManyWorldsRenderer ownership has been transferred.");
     }
 
-    return mwir_renderer_->Backward(*scene->mwir_scene_, *many_worlds->mwir_many_worlds_, grad_output, seed);
+    return mwir_renderer_->Backward(*scene->mwir_scene_, *many_worlds->mwir_many_worlds_, grad_output, grad_opacity, grad_normal, seed);
 }
 
 

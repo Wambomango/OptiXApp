@@ -65,7 +65,7 @@ class ManyWorlds
         };
 
         void UpdateShape();
-        void UpdateBBMesh(Params& params, CUstream stream);
+        void UpdateBoundingBox(Params& params, CUstream stream);
         void UpdateBuffers(Params& params, CUstream stream);
 
         std::shared_ptr<ManyWorldsData> data;
