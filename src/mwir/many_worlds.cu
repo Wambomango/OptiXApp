@@ -266,6 +266,8 @@ void ManyWorlds::UpdateBuffers(Params &params, CUstream stream)
     }
     params.many_worlds.reference = reinterpret_cast<complex3 *>(data->d_reference);
     params.many_worlds.perturbation = reinterpret_cast<complex3 *>(data->d_perturbation);
+    cudaMemsetAsync(reinterpret_cast<void *>(data->d_reference), 0, data->buffer_bytes, stream);
+    cudaMemsetAsync(reinterpret_cast<void *>(data->d_perturbation), 0, data->buffer_bytes, stream);
 }
 
 void ManyWorlds::PrepareRendering(Params& params, bool backward, CUstream stream)
