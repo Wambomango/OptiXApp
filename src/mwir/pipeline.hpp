@@ -5,7 +5,7 @@
 #include "utils/optix/pipeline.hpp"
 #include "utils/optix/sbt_record.hpp"
 
-#include "mwir/modules/render_module.h"
+#include "mwir/modules/common.h"
 #include "mwir/context.hpp"
 
 namespace MWIR

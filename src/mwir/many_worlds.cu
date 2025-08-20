@@ -1,6 +1,6 @@
 #include "mwir/many_worlds.hpp"
-#include <spdlog/spdlog.h>
 
+#include <spdlog/spdlog.h>
 #include "utils/optix/torch.hpp"
 #include "mwir/context.hpp"
 
@@ -178,9 +178,23 @@ void ManyWorlds::PrepareForward(Params& params, CUstream stream)
 }
 
 
-std::pair<torch::Tensor, torch::Tensor> ManyWorlds::PrepareBackward(Params& params, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, CUstream stream)
+std::pair<torch::Tensor, torch::Tensor> ManyWorlds::PrepareBackward(Params& params, torch::Tensor &e_field_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, CUstream stream)
 {
     PrepareRendering(params, true, stream);
+    params.many_worlds.backward = true;
+    if(e_field_gradient.device().type() != torch::kCUDA)
+    {
+        throw std::runtime_error("E-field gradient tensor must be on CUDA device");
+    }
+    else if(e_field_gradient.dtype() != torch::kComplexFloat)
+    {
+        throw std::runtime_error("E-field gradient tensor must have dtype torch::kComplexFloat");
+    }
+    else if(e_field_gradient.dim() != 3 || e_field_gradient.size(0) != params.scene.n_receivers || e_field_gradient.size(1) != params.scene.signal.n_samples || e_field_gradient.size(2) != 3)
+    {
+        throw std::runtime_error("E-field gradient tensor must have shape [" + std::to_string(params.scene.n_receivers) + ", " + std::to_string(params.scene.signal.n_samples) + ", 3]");
+    }
+    params.many_worlds.e_field_gradient = reinterpret_cast<complex3 *>(e_field_gradient.data_ptr());
     return AllocateGradTensors(params, opt_occupancy_gradient, opt_normal_gradient);
 }
 

@@ -70,7 +70,7 @@ torch::Tensor ManyWorldsRenderer::PrepareForward(Scene &scene, ManyWorlds &many_
 std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::PrepareBackward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &output_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, std::optional<int> seed)
 {
     scene.PrepareRendering(params, std::nullopt, stream);
-    std::pair<torch::Tensor, torch::Tensor> grad_tensors = many_worlds.PrepareBackward(params, opt_occupancy_gradient, opt_normal_gradient, stream);
+    std::pair<torch::Tensor, torch::Tensor> grad_tensors = many_worlds.PrepareBackward(params, output_gradient, opt_occupancy_gradient, opt_normal_gradient, stream);
     CheckOutputGradient(output_gradient);
     if (seed.has_value())
     {

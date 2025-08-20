@@ -1,142 +1,111 @@
-/*
-
- * SPDX-FileCopyrightText: Copyright (c) 2019 - 2024  NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause
- * 
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * 3. Neither the name of the copyright holder nor the names of its
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 #pragma once
 
 #include <vector_types.h>
+#include <curand_kernel.h>
 
+#include "common.h"
+#include "complex.h"
 #include "vec_math.h"
-
-
-__forceinline__ __device__ float3 toSRGB( const float3& c )
-{
-    float  invGamma = 1.0f / 2.4f;
-    float3 powed    = make_float3( powf( c.x, invGamma ), powf( c.y, invGamma ), powf( c.z, invGamma ) );
-    return make_float3(
-        c.x < 0.0031308f ? 12.92f * c.x : 1.055f * powed.x - 0.055f,
-        c.y < 0.0031308f ? 12.92f * c.y : 1.055f * powed.y - 0.055f,
-        c.z < 0.0031308f ? 12.92f * c.z : 1.055f * powed.z - 0.055f );
-}
-
-//__forceinline__ __device__ float dequantizeUnsigned8Bits( const unsigned char i )
-//{
-//    enum { N = (1 << 8) - 1 };
-//    return min((float)i / (float)N), 1.f)
-//}
-__forceinline__ __device__ unsigned char quantizeUnsigned8Bits( float x )
-{
-    x = clamp( x, 0.0f, 1.0f );
-    enum { N = (1 << 8) - 1, Np1 = (1 << 8) };
-    return (unsigned char)min((unsigned int)(x * (float)Np1), (unsigned int)N);
-}
-
-__forceinline__ __device__ uchar4 make_color( const float3& c )
-{
-    // first apply gamma, then convert to unsigned char
-    float3 srgb = toSRGB( clamp( c, 0.0f, 1.0f ) );
-    return make_uchar4( quantizeUnsigned8Bits( srgb.x ), quantizeUnsigned8Bits( srgb.y ), quantizeUnsigned8Bits( srgb.z ), 255u );
-}
-__forceinline__ __device__ uchar4 make_color( const float4& c )
-{
-    return make_color( make_float3( c.x, c.y, c.z ) );
-}
-
-__forceinline__ __device__ float luminance( const float3& rgb )
-{
-    const float3 ntsc_luminance = { 0.30f, 0.59f, 0.11f };
-    return dot( rgb, ntsc_luminance );
-}
-
-__forceinline__ __device__ float fresnel_schlick( const float cos_theta,
-                                                  const float exponent = 5.0f,
-                                                  const float minimum  = 0.0f,
-                                                  const float maximum  = 1.0f )
-{
-    /**
-      Clamp the result of the arithmetic due to floating point precision:
-      the result should lie strictly within [minimum, maximum]
-      return clamp(minimum + (maximum - minimum) * powf(1.0f - cos_theta, exponent),
-                   minimum, maximum);
-    */
-
-    /** The max doesn't seem like it should be necessary, but without it you get
-        annoying broken pixels at the center of reflective spheres where cos_theta ~ 1.
-    */
-    return clamp( minimum + ( maximum - minimum ) * powf( fmaxf( 0.0f, 1.0f - cos_theta ), exponent ), minimum, maximum );
-}
-
-__forceinline__ __device__ float3 fresnel_schlick( const float cos_theta, const float exponent, const float3& minimum, const float3& maximum )
-{
-    return make_float3( fresnel_schlick( cos_theta, exponent, minimum.x, maximum.x ),
-                        fresnel_schlick( cos_theta, exponent, minimum.y, maximum.y ),
-                        fresnel_schlick( cos_theta, exponent, minimum.z, maximum.z ) );
-}
-
-__forceinline__ __device__ bool refract( float3& r, const float3& i, const float3& n, const float ior )
-{
-    float3 nn       = n;
-    float  negNdotV = dot( i, nn );
-    float  eta;
-
-    if( negNdotV > 0.0f )
-    {
-        eta      = ior;
-        nn       = -n;
-        negNdotV = -negNdotV;
-    }
-    else
-    {
-        eta = 1.f / ior;
-    }
-
-    const float k = 1.f - eta * eta * ( 1.f - negNdotV * negNdotV );
-
-    if( k < 0.0f )
-    {
-        // Initialize this value, so that r always leaves this function initialized.
-        r = make_float3( 0.f );
-        return false;
-    }
-    else
-    {
-        r = normalize( eta * i - ( eta * negNdotV + sqrtf( k ) ) * nn );
-        return true;
-    }
-}
 
 __forceinline__ __device__ float3 exp( const float3& x )
 {
     return make_float3( exp( x.x ), exp( x.y ), exp( x.z ) );
 }
 
-#define float3_as_args( u )                                                                                            \
-    reinterpret_cast<unsigned int&>( ( u ).x ), reinterpret_cast<unsigned int&>( ( u ).y ),                            \
-        reinterpret_cast<unsigned int&>( ( u ).z )
+static __forceinline__ __device__ int LinearizeIndex(const int &x, const int &y, const int &z, const int3 &shape)
+{
+    return x * shape.y * shape.z + y * shape.z + z;
+}
+
+static __forceinline__ __device__ float3 SafeNormalize(const float3 &v)
+{
+    float len = length(v);
+    if (len > 1e-8f)
+    {
+        return v / len;
+    }
+    else 
+    {
+        return make_float3(0.0f, 0.0f, 1.0f);
+    }
+}
+
+static __forceinline__ __device__ float3 SampleDir(const AntennaData& sender, curandState& rand_state)
+{
+    float u = curand_uniform(&rand_state);
+    float v = curand_uniform(&rand_state);
+    float azimuth = sender.fov.x * (u - 0.5f);
+    float elevation = asin(sin(sender.fov.y / 2) * (2 * v - 1.0f));
+    float3 dir = make_float3(cos(azimuth) * cos(elevation), sin(azimuth) * cos(elevation), sin(elevation));
+    return sender.forward * dir.x + sender.left * dir.y + sender.up * dir.z;
+}
+
+
+static __device__ void CalculateE(const Params &p, const uint3 &idx, const float3 &dir_tx, const float3 &p_hit, const float3 &n_hit, complex3* const result, const bool overwrite)
+{
+    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * p.scene.n_receivers * p.scene.signal.n_samples +
+                    idx.y * p.scene.n_receivers * p.scene.signal.n_samples;
+    int receiver_offset;
+
+    AntennaData sender = p.scene.d_senders[p.antenna_index];
+    float3 pos_tx = sender.position;
+    float dist_tx = length(p_hit - pos_tx);
+
+    AntennaData receiver;
+    unsigned int p0;
+    float3 dir_rx;
+    float dist_rx;
+    float dist_total;
+    complex minusjomega;
+
+    float factor = dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit));
+    float3 vec_tx = factor * cross(n_hit, cross(dir_tx, normalize(cross(dir_tx, sender.left))));
+
+    float3 vec_rx;
+    complex3 A_rx;
+    complex3 E_rx;
+
+    for(int i = 0; i < p.scene.n_receivers; i++)
+    {
+        receiver_offset = ray_offset + i * p.scene.signal.n_samples;
+        receiver = p.scene.d_receivers[i];
+        dir_rx = normalize(receiver.position - p_hit);
+                
+        if(dot(dir_rx, n_hit) <= 0.0f)
+        {
+            continue; 
+        }
+        
+        dist_rx = length(receiver.position - p_hit);
+        optixTrace( p.scene.mesh_handle,
+                    p_hit + n_hit * 0.001f, 
+                    dir_rx,
+                    0.0f,          
+                    dist_rx,         
+                    0.0f, 
+                    OptixVisibilityMask( 255 ),
+                    OPTIX_RAY_FLAG_NONE,
+                    1,                  
+                    0,     
+                    1,              
+                    p0);
+
+        if(__uint_as_float(p0) > 0.0f)
+        {
+            continue; 
+        }
+        
+        dist_total = dist_tx + dist_rx;
+        vec_rx = vec_tx / dist_rx;
+
+        for(int j = 0; j < p.scene.signal.n_samples; j++)
+        {
+            minusjomega = make_complex(0.0f, -(p.scene.signal.frequency_range.x + j * p.scene.signal.f_step));
+            A_rx = vec_rx * expf(minusjomega * INV_C0 * dist_total);
+            E_rx = minusjomega * A_rx;
+            E_rx = E_rx - dot(E_rx, dir_rx) * dir_rx;
+            result[receiver_offset + j] = (overwrite) ? (E_rx) : (result[receiver_offset + j] + E_rx);
+        }
+    }
+}
+

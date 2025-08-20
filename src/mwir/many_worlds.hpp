@@ -1,6 +1,7 @@
 #pragma once
 
-#include "mwir/modules/render_module.h"
+#include "mwir/modules/common.h"
+#include "mwir/modules/defines.h"
 
 #include "utils/optix/utils.hpp"
 
@@ -37,7 +38,7 @@ class ManyWorlds
     protected:
         friend class ManyWorldsRenderer;
         void PrepareForward(Params& params, CUstream stream);
-        std::pair<torch::Tensor, torch::Tensor> PrepareBackward(Params& params, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, CUstream stream);
+        std::pair<torch::Tensor, torch::Tensor> PrepareBackward(Params& params, torch::Tensor &e_field_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, CUstream stream);
 
     private:
         struct ManyWorldsData

@@ -4,7 +4,8 @@
 #include "mwir/antenna.hpp"
 #include "mwir/signal.hpp"
 #include "mwir/context.hpp"
-#include "mwir/modules/render_module.h"
+#include "mwir/modules/common.h"
+#include "mwir/modules/defines.h"
 
 #include <optional>
 #include <memory>
