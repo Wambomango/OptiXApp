@@ -25,8 +25,6 @@ public:
     float GetResolution() const;
     int GetNSamples() const;
     torch::Tensor GetOccupancy();
-    torch::Tensor GetNormal();
-    void UpdateNormal();
 
 
 protected:

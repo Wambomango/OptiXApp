@@ -54,8 +54,6 @@ struct alignas(16) ManyWorldsParams
 
     float *occupancy;
     float *occupancy_gradient;
-    float3 *normal;
-    float3 *normal_gradient;
 
     complex3 *reference;
     complex3 *perturbation;

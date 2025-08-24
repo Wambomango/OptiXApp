@@ -4,19 +4,16 @@ extern "C" __global__ void __raygen__rg()
 {
     uint3 idx = optixGetLaunchIndex();
     uint3 dim = optixGetLaunchDimensions();
+    int ray_offset = GetRayOffset(idx, params);
     curandState rand_state;
     curand_init(params.seed + params.antenna_index, idx.x * dim.y + idx.y, 0, &rand_state);
 
     AntennaData sender = params.scene.d_senders[params.antenna_index];
     float3 p_tx = sender.position;
-    float3 dir_tx;
-    unsigned int p0;
-    float t_hit;
-
     for(int i = 0; i < sender.n_batches; i++)
     {   
-        dir_tx = SampleDir(sender, rand_state);
-
+        float3 dir_tx = SampleDir(sender, rand_state);
+        unsigned int p0;
         optixTrace( params.scene.mesh_handle,
                     p_tx,
                     dir_tx,
@@ -29,8 +26,8 @@ extern "C" __global__ void __raygen__rg()
                     0,     
                     0,
                     p0);
-        t_hit = __uint_as_float(p0);
-        PerturbRay(idx, p_tx, dir_tx, t_hit, rand_state);
+        float t_hit = __uint_as_float(p0);
+        PerturbRay(ray_offset, p_tx, dir_tx, t_hit, rand_state);
     }
 }
 
@@ -41,14 +38,14 @@ extern "C" __global__ void __miss__geometry()
     optixSetPayload_0(__float_as_uint(1E16f));
     uint3 idx = optixGetLaunchIndex();
     complex3 *reference = params.many_worlds.reference;
-    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * params.scene.n_receivers * params.scene.signal.n_samples + idx.y * params.scene.n_receivers * params.scene.signal.n_samples;
-    int receiver_offset;
+    int ray_offset = GetRayOffset(idx, params);
     for(int i = 0; i < params.scene.n_receivers; i++)
     {
-        receiver_offset = ray_offset + i * params.scene.signal.n_samples;
+        int receiver_offset = ray_offset + i * params.scene.signal.n_samples;
         for(int j = 0; j < params.scene.signal.n_samples; j++)
         {
-            reference[receiver_offset + j] = make_complex3(0.0f);
+            int frequency_offset = receiver_offset + j;
+            reference[frequency_offset] = make_complex3(0.0f);
         }
     }
 }
@@ -64,8 +61,10 @@ extern "C" __global__ void __closesthit__geometry()
     {
         return;
     }
-    CalculateE(params, idx, optixGetWorldRayDirection(), p_hit, n_hit, params.many_worlds.reference, true);
+    int ray_offset = GetRayOffset(idx, params);
+    CalculateE(params, ray_offset, optixGetWorldRayDirection(), p_hit, n_hit, params.many_worlds.reference, true);
 }
+
 
 
 
@@ -88,7 +87,6 @@ extern "C" __global__ void __closesthit__manyworlds()
     unsigned int p0 = optixGetPayload_0();
     unsigned int p1 = optixGetPayload_1();;
     float t_hit = optixGetRayTmax();
-
     if(__uint_as_float( p0 ) < 0.0f)
     {
         float3 p_tx = optixGetWorldRayOrigin();

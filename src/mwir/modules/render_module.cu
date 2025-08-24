@@ -10,12 +10,9 @@ extern "C" __global__ void __raygen__rg()
 
     AntennaData sender = params.scene.d_senders[params.antenna_index];
     float3 p_tx = sender.position;
-    float3 dir_tx;
-
     for(int i = 0; i < sender.n_batches; i++)
     {   
-        dir_tx = SampleDir(sender, rand_state);
-
+        float3 dir_tx = SampleDir(sender, rand_state);
         optixTrace( params.scene.mesh_handle,
                     p_tx,
                     dir_tx,
@@ -29,8 +26,6 @@ extern "C" __global__ void __raygen__rg()
                     0);
     }
 }
-
-
 
 
 
@@ -49,12 +44,9 @@ extern "C" __global__ void __closesthit__geometry()
     {
         return;
     }
-    CalculateE(params, idx, optixGetWorldRayDirection(), p_hit, n_hit, params.scene.result, false);
+    int ray_offset = GetRayOffset(idx, params);
+    CalculateE(params, ray_offset, optixGetWorldRayDirection(), p_hit, n_hit, params.scene.result, false);
 }
-
-
-
-
 
 
 

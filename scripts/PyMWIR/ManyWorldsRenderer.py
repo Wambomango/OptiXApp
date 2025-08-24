@@ -7,7 +7,7 @@ from . import ManyWorlds
 
 class ManyWorldsRendererFunction(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, occupancy, normals, payload):
+    def forward(ctx, occupancy, payload):
         inverse_renderer, scene, many_worlds, output, seed = payload
         result = inverse_renderer.Forward(scene.scene, many_worlds.many_worlds, output, seed)
         ctx.inverse_renderer = inverse_renderer
@@ -22,8 +22,8 @@ class ManyWorldsRendererFunction(torch.autograd.Function):
         scene = ctx.scene
         many_worlds = ctx.many_worlds
         seed = ctx.seed
-        occupancy_gradient, normal_gradient = inverse_renderer.Backward(scene.scene, many_worlds.many_worlds, grad_output, None, None, seed)
-        return occupancy_gradient, normal_gradient, None 
+        occupancy_gradient = inverse_renderer.Backward(scene.scene, many_worlds.many_worlds, grad_output, None, seed)
+        return occupancy_gradient, None 
 
 
 
@@ -43,5 +43,4 @@ class ManyWorldsRenderer:
             raise TypeError("output must be a torch.Tensor or None")
 
         occupancy = many_worlds.GetOccupancy()
-        normal = many_worlds.GetNormal()
-        return self.render_func(occupancy, normal, (self.inverse_renderer, scene, many_worlds, output, seed))
+        return self.render_func(occupancy, (self.inverse_renderer, scene, many_worlds, output, seed))

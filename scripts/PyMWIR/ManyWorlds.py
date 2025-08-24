@@ -57,19 +57,6 @@ class ManyWorlds:
         if self.many_worlds is None:
             raise ValueError("ManyWorlds ownership has been transferred")
         return self.many_worlds.GetOccupancy()
-    
-    def GetNormal(self):
-        if self.many_worlds is None:
-            raise ValueError("ManyWorlds ownership has been transferred")
-        return self.many_worlds.GetNormal()
-
-    def UpdateNormal(self):
-        if self.many_worlds is None:
-            raise ValueError("ManyWorlds ownership has been transferred")
-        self.many_worlds.UpdateNormal()
-
-    def GenerateMesh(self):
-        pass
 
     def __SetMin(self, min):
         if(type(min) is torch.Tensor):

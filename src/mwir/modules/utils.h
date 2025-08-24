@@ -6,6 +6,7 @@
 #include "common.h"
 #include "complex.h"
 #include "vec_math.h"
+#include "defines.h"
 
 __forceinline__ __device__ float3 exp( const float3& x )
 {
@@ -17,7 +18,12 @@ static __forceinline__ __device__ int LinearizeIndex(const int &x, const int &y,
     return x * shape.y * shape.z + y * shape.z + z;
 }
 
-static __forceinline__ __device__ float3 SafeNormalize(const float3 &v)
+static __forceinline__ __device__ int GetRayOffset(const uint3 &idx, const Params &p)
+{
+    return idx.x * OPTIX_MAX_GRID_DIM * p.scene.n_receivers * p.scene.signal.n_samples + idx.y * p.scene.n_receivers * p.scene.signal.n_samples;
+}
+
+static __forceinline__ __device__ float3 SafeNormalize(const float3 &v, curandState &rand_state)
 {
     float len = length(v);
     if (len > 1e-8f)
@@ -26,7 +32,14 @@ static __forceinline__ __device__ float3 SafeNormalize(const float3 &v)
     }
     else 
     {
-        return make_float3(0.0f, 0.0f, 1.0f);
+        float u = curand_uniform(&rand_state); 
+        float v = curand_uniform(&rand_state); 
+        float theta = 2.0f * PI * u;
+        float phi = acosf(2.0f * v - 1.0f);
+        float x = sinf(phi) * cosf(theta);
+        float y = sinf(phi) * sinf(theta);
+        float z = cosf(phi);
+        return make_float3(x, y, z);
     }
 }
 
@@ -41,42 +54,24 @@ static __forceinline__ __device__ float3 SampleDir(const AntennaData& sender, cu
 }
 
 
-static __device__ void CalculateE(const Params &p, const uint3 &idx, const float3 &dir_tx, const float3 &p_hit, const float3 &n_hit, complex3* const result, const bool overwrite)
+static __device__ void CalculateE(const Params &p, const int &ray_offset, const float3 &dir_tx, const float3 &p_hit, const float3 &n_hit, complex3* const result, const bool overwrite)
 {
-    int ray_offset = idx.x * OPTIX_MAX_GRID_DIM * p.scene.n_receivers * p.scene.signal.n_samples +
-                    idx.y * p.scene.n_receivers * p.scene.signal.n_samples;
-    int receiver_offset;
-
     AntennaData sender = p.scene.d_senders[p.antenna_index];
     float3 pos_tx = sender.position;
     float dist_tx = length(p_hit - pos_tx);
-
-    AntennaData receiver;
-    unsigned int p0;
-    float3 dir_rx;
-    float dist_rx;
-    float dist_total;
-    complex minusjomega;
-
-    float factor = dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit));
-    float3 vec_tx = factor * cross(n_hit, cross(dir_tx, normalize(cross(dir_tx, sender.left))));
-
-    float3 vec_rx;
-    complex3 A_rx;
-    complex3 E_rx;
-
     for(int i = 0; i < p.scene.n_receivers; i++)
     {
-        receiver_offset = ray_offset + i * p.scene.signal.n_samples;
-        receiver = p.scene.d_receivers[i];
-        dir_rx = normalize(receiver.position - p_hit);
+        int receiver_offset = ray_offset + i * p.scene.signal.n_samples;
+        AntennaData receiver = p.scene.d_receivers[i];
+        float3 dir_rx = normalize(receiver.position - p_hit);
                 
         if(dot(dir_rx, n_hit) <= 0.0f)
         {
             continue; 
         }
-        
-        dist_rx = length(receiver.position - p_hit);
+
+        float dist_rx = length(receiver.position - p_hit);
+        unsigned int p0;
         optixTrace( p.scene.mesh_handle,
                     p_hit + n_hit * 0.001f, 
                     dir_rx,
@@ -94,17 +89,14 @@ static __device__ void CalculateE(const Params &p, const uint3 &idx, const float
         {
             continue; 
         }
-        
-        dist_total = dist_tx + dist_rx;
-        vec_rx = vec_tx / dist_rx;
 
         for(int j = 0; j < p.scene.signal.n_samples; j++)
         {
-            minusjomega = make_complex(0.0f, -(p.scene.signal.frequency_range.x + j * p.scene.signal.f_step));
-            A_rx = vec_rx * expf(minusjomega * INV_C0 * dist_total);
-            E_rx = minusjomega * A_rx;
-            E_rx = E_rx - dot(E_rx, dir_rx) * dir_rx;
-            result[receiver_offset + j] = (overwrite) ? (E_rx) : (result[receiver_offset + j] + E_rx);
+            int frequency_offset = receiver_offset + j;
+            complex minusjomega = make_complex(0.0f, -(p.scene.signal.frequency_range.x + j * p.scene.signal.f_step));
+            complex3 Epsilon_rx = minusjomega * (dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit) * dist_rx)) * cross(n_hit, cross(dir_tx, normalize(cross(dir_tx, sender.left)))) * expf(minusjomega * INV_C0 * (dist_tx + dist_rx));
+            complex3 E_rx = Epsilon_rx - dot(Epsilon_rx, dir_rx) * dir_rx;
+            result[frequency_offset] = (overwrite) ? (E_rx) : (result[frequency_offset] + E_rx);
         }
     }
 }

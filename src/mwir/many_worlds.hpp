@@ -30,15 +30,12 @@ class ManyWorlds
         glm::vec3 GetMax() const;
         float GetResolution() const;
         torch::Tensor GetOccupancy() const;
-        torch::Tensor GetNormal() const;
         int GetNSamples() const;
 
-        void UpdateNormal();
-        
     protected:
         friend class ManyWorldsRenderer;
         void PrepareForward(Params& params, CUstream stream);
-        std::pair<torch::Tensor, torch::Tensor> PrepareBackward(Params& params, torch::Tensor &e_field_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, CUstream stream);
+        torch::Tensor PrepareBackward(Params& params, torch::Tensor &e_field_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, CUstream stream);
 
     private:
         struct ManyWorldsData
@@ -51,7 +48,6 @@ class ManyWorlds
             bool min_updated = true;
             bool max_updated = true;
             torch::Tensor occupancy;
-            torch::Tensor normal;
             OptixTraversableHandle mesh_handle;
             CUdeviceptr d_mesh = 0;
             size_t buffer_bytes = 0;
@@ -70,7 +66,7 @@ class ManyWorlds
         void UpdateShape();
         void UpdateBoundingBox(Params& params, CUstream stream);
         void UpdateBuffers(Params& params, CUstream stream);
-        std::pair<torch::Tensor, torch::Tensor> AllocateGradTensors(Params &params, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient);
+        torch::Tensor AllocateGradTensor(Params &params, std::optional<torch::Tensor> opt_occupancy_gradient);
 
 
         std::shared_ptr<ManyWorldsData> data;

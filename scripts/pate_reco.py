@@ -3,6 +3,7 @@ import PyMWIR as mwir
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
+import time
 
 
 plate_scale = 0.5
@@ -22,18 +23,28 @@ many_worlds = mwir.ManyWorlds([plate_distance - 0.5, -0.5, -0.5], [plate_distanc
 
 with torch.no_grad():
     occupancy = many_worlds.GetOccupancy()
-    occupancy[:] = 0.0
-    many_worlds.UpdateNormal()
+    occupancy[:] = 0.1
 
 mesh_vertices = torch.tensor([[0, 1, 1], [0, 1, -1], [0, -1, 1], [0, -1, -1]], dtype=torch.float32) * plate_scale + torch.tensor([plate_distance, 0, 0], dtype=torch.float32)
 mesh.SetVertices(mesh_vertices)
+
+
+
+
+
 E_rx_ref = renderer.Render(scene)
 E_rx = mw_renderer.Render(scene, many_worlds)
 
-print(E_rx_ref)
-print(E_rx)
+
+loss = torch.sum(torch.abs(E_rx - E_rx_ref))
+loss.backward()
+
+with torch.no_grad():
+    occupancy += occupancy.grad * 1e9
+    occupancy.grad = None
 
 
-# loss = torch.sum(torch.abs(E_rx - E_rx_ref))
-# loss.backward()
-# print(occupancy.grad.shape)
+
+mesh = mwir.Mesh()
+mesh.FromManyWorlds(many_worlds)
+mesh.View()

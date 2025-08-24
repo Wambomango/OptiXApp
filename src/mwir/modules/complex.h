@@ -537,6 +537,22 @@ __forceinline__ __host__ __device__ complex dot(const complex2& a, const complex
   return a.x * conj(b.x) + a.y * conj(b.y);
 }
 
+__forceinline__ __host__ __device__ complex elsum(const complex2& a)
+{
+  return a.x + a.y;
+}
+
+__forceinline__ __host__ __device__ float2 real(const complex2& a)
+{
+  return make_float2(a.x.real, a.y.real);
+}
+
+__forceinline__ __host__ __device__ float2 imag(const complex2& a)
+{
+  return make_float2(a.x.imag, a.y.imag);
+}
+
+
 
 
 
@@ -802,6 +818,21 @@ __forceinline__ __host__ __device__ complex3 cross(const complex3& a, const floa
   );
 }
 
+__forceinline__ __host__ __device__ complex elsum(const complex3& a)
+{
+  return a.x + a.y + a.z;
+}
+
+__forceinline__ __host__ __device__ float3 real(const complex3& a)
+{
+  return make_float3(a.x.real, a.y.real, a.z.real);
+}
+
+__forceinline__ __host__ __device__ float3 imag(const complex3& a)
+{
+  return make_float3(a.x.imag, a.y.imag, a.z.imag);
+}
+
 
 
 
@@ -1026,4 +1057,19 @@ __forceinline__ __host__ __device__ complex4 expf(const complex4& a)
 __forceinline__ __host__ __device__ complex dot(const complex4& a, const complex4& b)
 {
   return a.x * conj(b.x) + a.y * conj(b.y) + a.z * conj(b.z) + a.w * conj(b.w);
+}
+
+__forceinline__ __host__ __device__ complex elsum(const complex4& a)
+{
+  return a.x + a.y + a.z + a.w;
+}
+
+__forceinline__ __host__ __device__ float4 real(const complex4& a)
+{
+  return make_float4(a.x.real, a.y.real, a.z.real, a.w.real);
+}
+
+__forceinline__ __host__ __device__ float4 imag(const complex4& a)
+{
+  return make_float4(a.x.imag, a.y.imag, a.z.imag, a.w.imag);
 }

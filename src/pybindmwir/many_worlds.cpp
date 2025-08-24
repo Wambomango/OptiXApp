@@ -132,23 +132,6 @@ torch::Tensor ManyWorlds::GetOccupancy()
     return mwir_many_worlds_->GetOccupancy();
 }
 
-torch::Tensor ManyWorlds::GetNormal()
-{
-    if (!mwir_many_worlds_)
-    {
-        throw std::runtime_error("ManyWorlds ownership has been transferred.");
-    }
-    return mwir_many_worlds_->GetNormal();
-}
-
-void ManyWorlds::UpdateNormal()
-{
-    if (!mwir_many_worlds_)
-    {
-        throw std::runtime_error("ManyWorlds ownership has been transferred.");
-    }
-    mwir_many_worlds_->UpdateNormal();
-}
 
 void init_many_worlds(py::module_ &m)
 {
@@ -164,7 +147,5 @@ void init_many_worlds(py::module_ &m)
         .def("GetMax", &ManyWorlds::GetMax)
         .def("GetResolution", &ManyWorlds::GetResolution)
         .def("GetNSamples", &ManyWorlds::GetNSamples)
-        .def("GetOccupancy", &ManyWorlds::GetOccupancy)
-        .def("GetNormal", &ManyWorlds::GetNormal)
-        .def("UpdateNormal", &ManyWorlds::UpdateNormal);
+        .def("GetOccupancy", &ManyWorlds::GetOccupancy);
 }

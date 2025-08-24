@@ -23,7 +23,6 @@ ManyWorlds ManyWorlds::Clone() const
 {
     ManyWorlds clone(data->min, data->max, data->resolution, data->n_samples);
     clone.data->occupancy = data->occupancy.clone();
-    clone.data->normal = data->normal.clone();
     return clone;
 }
 
@@ -119,58 +118,6 @@ torch::Tensor ManyWorlds::GetOccupancy() const
     return data->occupancy;
 }
 
-torch::Tensor ManyWorlds::GetNormal() const
-{
-    if (data->normal.numel() == 0)
-    {
-        throw std::runtime_error("Normal tensor is empty. Please set extent and resolution first.");
-    }
-    return data->normal;
-}
-
-void ManyWorlds::UpdateNormal()
-{
-    torch::Tensor &normal = data->normal;
-    torch::Tensor &occupancy = data->occupancy;
-
-    // Compute gradients along each axis
-    // X-gradient
-    normal.index({Slice(1, data->shape.x-1), Slice(), Slice(), 0}) =
-        0.5f * (occupancy.index({Slice(2, data->shape.x), Slice(), Slice()}) - occupancy.index({Slice(0, data->shape.x-2), Slice(), Slice()}));
-    normal.index({0, Slice(), Slice(), 0}) =
-        occupancy.index({1, Slice(), Slice()}) - occupancy.index({0, Slice(), Slice()});
-    normal.index({data->shape.x-1, Slice(), Slice(), 0}) =
-        occupancy.index({data->shape.x-1, Slice(), Slice()}) - occupancy.index({data->shape.x-2, Slice(), Slice()});
-
-    // Y-gradient
-    normal.index({Slice(), Slice(1, data->shape.y-1), Slice(), 1}) =
-        0.5f * (occupancy.index({Slice(), Slice(2, data->shape.y), Slice()}) - occupancy.index({Slice(), Slice(0, data->shape.y-2), Slice()}));
-    normal.index({Slice(), 0, Slice(), 1}) =
-        occupancy.index({Slice(), 1, Slice()}) - occupancy.index({Slice(), 0, Slice()});
-    normal.index({Slice(), data->shape.y-1, Slice(), 1}) =
-        occupancy.index({Slice(), data->shape.y-1, Slice()}) - occupancy.index({Slice(), data->shape.y-2, Slice()});
-
-    // Z-gradient
-    normal.index({Slice(), Slice(), Slice(1, data->shape.z-1), 2}) =
-        0.5f * (occupancy.index({Slice(), Slice(), Slice(2, data->shape.z)}) - occupancy.index({Slice(), Slice(), Slice(0, data->shape.z-2)}));
-    normal.index({Slice(), Slice(), 0, 2}) =
-        occupancy.index({Slice(), Slice(), 1}) - occupancy.index({Slice(), Slice(), 0});
-    normal.index({Slice(), Slice(), data->shape.z-1, 2}) =
-        occupancy.index({Slice(), Slice(), data->shape.z-1}) - occupancy.index({Slice(), Slice(), data->shape.z-2});
-
-    // Normalize the normals
-    torch::Tensor norm = normal.norm(2, 3, true);
-    torch::Tensor zero_mask = norm == 0;
-    torch::Tensor safe_norm = norm.clone();
-    safe_norm.masked_fill_(zero_mask, 1.0f);
-    normal = normal / safe_norm;
-    if (zero_mask.any().item<bool>()) {
-        torch::Tensor rand_dirs = torch::randn_like(normal);
-        rand_dirs = rand_dirs / rand_dirs.norm(2, 3, true);
-        normal.masked_scatter_(zero_mask.expand_as(normal), rand_dirs.masked_select(zero_mask.expand_as(normal)));
-    }
-}
-
 void ManyWorlds::PrepareForward(Params& params, CUstream stream)
 {
     PrepareRendering(params, false, stream);
@@ -178,7 +125,7 @@ void ManyWorlds::PrepareForward(Params& params, CUstream stream)
 }
 
 
-std::pair<torch::Tensor, torch::Tensor> ManyWorlds::PrepareBackward(Params& params, torch::Tensor &e_field_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, CUstream stream)
+torch::Tensor ManyWorlds::PrepareBackward(Params& params, torch::Tensor &e_field_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, CUstream stream)
 {
     PrepareRendering(params, true, stream);
     params.many_worlds.backward = true;
@@ -195,7 +142,7 @@ std::pair<torch::Tensor, torch::Tensor> ManyWorlds::PrepareBackward(Params& para
         throw std::runtime_error("E-field gradient tensor must have shape [" + std::to_string(params.scene.n_receivers) + ", " + std::to_string(params.scene.signal.n_samples) + ", 3]");
     }
     params.many_worlds.e_field_gradient = reinterpret_cast<complex3 *>(e_field_gradient.data_ptr());
-    return AllocateGradTensors(params, opt_occupancy_gradient, opt_normal_gradient);
+    return AllocateGradTensor(params, opt_occupancy_gradient);
 }
 
 
@@ -216,8 +163,6 @@ void ManyWorlds::UpdateShape()
         data->max.y = data->min.y + data->shape.y * data->resolution;
         data->max.z = data->min.z + data->shape.z * data->resolution;
         data->occupancy = torch::zeros({data->shape.x, data->shape.y, data->shape.z}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0).requires_grad(true));
-        data->normal = torch::zeros({data->shape.x, data->shape.y, data->shape.z, 3}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0));
-        UpdateNormal();
     }
 }
 
@@ -280,18 +225,17 @@ void ManyWorlds::PrepareRendering(Params& params, bool backward, CUstream stream
     params.many_worlds.weight = 1.0f / data->n_samples;
     params.many_worlds.backward = backward;
     params.many_worlds.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
-    params.many_worlds.normal = reinterpret_cast<float3*>(data->normal.data_ptr());
-    if(!(data->occupancy.is_cuda() && data->normal.is_cuda()))
+    if(!data->occupancy.is_cuda())
     {
-        throw std::runtime_error("Both occupancy and normal tensors must be on the same CUDA device.");
+        throw std::runtime_error("Occupancy tensor must be on a CUDA device.");
     }
     UpdateBoundingBox(params, stream);
     UpdateBuffers(params, stream);
 }
 
-std::pair<torch::Tensor, torch::Tensor> ManyWorlds::AllocateGradTensors(Params &params, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient)
+torch::Tensor ManyWorlds::AllocateGradTensor(Params &params, std::optional<torch::Tensor> opt_occupancy_gradient)
 {
-    torch::Tensor occupancy_gradient, normal_gradient;
+    torch::Tensor occupancy_gradient;
     int3 shape = params.many_worlds.shape;
     if(opt_occupancy_gradient.has_value())
     {
@@ -314,29 +258,8 @@ std::pair<torch::Tensor, torch::Tensor> ManyWorlds::AllocateGradTensors(Params &
         occupancy_gradient = torch::zeros({shape.x, shape.y, shape.z}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0));
     }
 
-    if(opt_normal_gradient.has_value())
-    {
-        normal_gradient = opt_normal_gradient.value();
-        if(normal_gradient.device().type() != torch::kCUDA)
-        {
-            throw std::runtime_error("Normal gradient tensor must be on CUDA device");
-        }
-        if(normal_gradient.dtype() != torch::kFloat32)
-        {
-            throw std::runtime_error("Normal gradient tensor must have dtype torch::kFloat32");
-        }
-        if(normal_gradient.dim() != 4 || normal_gradient.size(0) != shape.x || normal_gradient.size(1) != shape.y || normal_gradient.size(2) != shape.z || normal_gradient.size(3) != 3)
-        {
-            throw std::runtime_error("Normal gradient tensor must have shape [" + std::to_string(shape.x) + ", " + std::to_string(shape.y) + ", " + std::to_string(shape.z) + ", 3]");
-        }
-    }
-    else
-    {
-        normal_gradient = torch::zeros({shape.x, shape.y, shape.z, 3}, torch::dtype(torch::kFloat32).device(torch::kCUDA, 0));
-    }
     params.many_worlds.occupancy_gradient = reinterpret_cast<float*>(occupancy_gradient.data_ptr());
-    params.many_worlds.normal_gradient = reinterpret_cast<float3*>(normal_gradient.data_ptr());
-    return {occupancy_gradient, normal_gradient};
+    return occupancy_gradient;
 }
 
 }

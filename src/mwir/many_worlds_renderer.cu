@@ -35,9 +35,9 @@ torch::Tensor ManyWorldsRenderer::Forward(Scene &scene, ManyWorlds &many_worlds,
     return result_tensor;
 }
 
-std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::Backward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &output_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, std::optional<int> seed)
+torch::Tensor ManyWorldsRenderer::Backward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &output_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<int> seed)
 {
-    std::pair<torch::Tensor, torch::Tensor> grad_tensors = PrepareBackward(scene, many_worlds, output_gradient, opt_occupancy_gradient, opt_normal_gradient, seed);
+    torch::Tensor occupancy_gradient = PrepareBackward(scene, many_worlds, output_gradient, opt_occupancy_gradient, seed);
 
     for(int i = 0; i < params.scene.n_senders; i++)
     {
@@ -46,7 +46,7 @@ std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::Backward(Scene &scen
     CUDA_CHECK(cudaStreamSynchronize(stream));
 
     SPDLOG_INFO("Finished rendering");
-    return grad_tensors;
+    return occupancy_gradient;
 }
 
 torch::Tensor ManyWorldsRenderer::PrepareForward(Scene &scene, ManyWorlds &many_worlds, std::optional<torch::Tensor> opt_result_tensor, std::optional<int> seed)
@@ -67,10 +67,10 @@ torch::Tensor ManyWorldsRenderer::PrepareForward(Scene &scene, ManyWorlds &many_
 }
 
 
-std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::PrepareBackward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &output_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<torch::Tensor> opt_normal_gradient, std::optional<int> seed)
+torch::Tensor ManyWorldsRenderer::PrepareBackward(Scene &scene, ManyWorlds &many_worlds, torch::Tensor &output_gradient, std::optional<torch::Tensor> opt_occupancy_gradient, std::optional<int> seed)
 {
     scene.PrepareRendering(params, std::nullopt, stream);
-    std::pair<torch::Tensor, torch::Tensor> grad_tensors = many_worlds.PrepareBackward(params, output_gradient, opt_occupancy_gradient, opt_normal_gradient, stream);
+    torch::Tensor occupancy_gradient = many_worlds.PrepareBackward(params, output_gradient, opt_occupancy_gradient, stream);
     CheckOutputGradient(output_gradient);
     if (seed.has_value())
     {
@@ -82,7 +82,7 @@ std::pair<torch::Tensor, torch::Tensor> ManyWorldsRenderer::PrepareBackward(Scen
         params.seed = std::rand();
     }
     CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(d_params), &params, sizeof(Params), cudaMemcpyHostToDevice, stream));
-    return grad_tensors;
+    return occupancy_gradient;
 }
 
 void ManyWorldsRenderer::CheckOutputGradient(torch::Tensor &output_gradient)
