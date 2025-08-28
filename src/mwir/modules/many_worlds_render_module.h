@@ -135,15 +135,13 @@ static __forceinline__ __device__ void AddPerturbationForward(const int &ray_off
     complex3 *result = params.scene.result;
     for(int i = 0; i < params.scene.n_receivers; i++)
     {
-        int receiver_offset = ray_offset + i * params.scene.signal.n_samples;
         for(int j = 0; j < params.scene.signal.n_samples; j++)
         {
-            int frequency_offset = receiver_offset + j;
-
-            complex3 E_ref = reference[frequency_offset];
-            complex3 E_pert = perturbation[frequency_offset];
+            int offset = ray_offset + i * params.scene.signal.n_samples + j;
+            complex3 E_ref = reference[offset];
+            complex3 E_pert = perturbation[offset];
             complex3 E_res = occupancy * E_pert + (1.0f - occupancy) * E_ref;
-            result[frequency_offset] += params.many_worlds.weight * E_res;
+            result[offset] += params.many_worlds.weight * E_res;
         }
     }
 }
@@ -175,8 +173,6 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
     }
 
     complex3 *reference = params.many_worlds.reference;
-    complex3 *perturbation = params.many_worlds.perturbation;
-    complex3 *result = params.scene.result;
     float partial_occupancy = 0.0f;
     float3 partial_normal = make_float3(0.0f, 0.0f, 0.0f);
 
@@ -187,67 +183,104 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
 
     for(int i = 0; i < params.scene.n_receivers; i++)
     {
-        int receiver_offset = ray_offset + i * params.scene.signal.n_samples;
         AntennaData receiver = params.scene.d_receivers[i];
         float3 dir_rx = normalize(receiver.position - p_sample);
-
-        if(dot(dir_rx, normal) <= 0.0f)
-        {
-            continue; 
-        }
-
         float dist_rx = length(receiver.position - p_sample);
-        unsigned int p0;
-        optixTrace( params.scene.mesh_handle,
-                    p_sample + normal * 0.001f, 
-                    dir_rx,
-                    0.0f,          
-                    dist_rx,         
-                    0.0f, 
-                    OptixVisibilityMask( 255 ),
-                    OPTIX_RAY_FLAG_NONE,
-                    1,                  
-                    0,     
-                    1,              
-                    p0);
 
-        if(__uint_as_float(p0) > 0.0f)
+        bool success = false;
+        if(dot(dir_rx, normal) > 0.0f)
         {
-            continue; 
+            unsigned int p0;
+            optixTrace( params.scene.mesh_handle,
+                        p_sample + normal * 0.001f, 
+                        dir_rx,
+                        0.0f,          
+                        dist_rx,         
+                        0.0f, 
+                        OptixVisibilityMask( 255 ),
+                        OPTIX_RAY_FLAG_NONE,
+                        1,                  
+                        0,     
+                        1,              
+                        p0);
+            success = (__uint_as_float(p0) <= 0.0f); 
         }
-        
-        for(int j = 0; j < params.scene.signal.n_samples; j++)
+
+        if(success)
         {
-            int frequency_offset = receiver_offset + j;
-            complex minusjomega = make_complex(0.0f, -(params.scene.signal.frequency_range.x + j * params.scene.signal.f_step));
-            complex factor = minusjomega * (dist_tx / (dist_rx * 2 * PI * C0 * sender.ray_density * dot(-dir_tx, normal))) * expf(minusjomega * INV_C0 * (dist_tx + dist_rx));
-            float3 vector = cross(normal, cross(dir_tx, normalize(cross(dir_tx, sender.left))));
-            complex3 Epsilon_rx = factor * vector;
-            complex3 E_pert = Epsilon_rx - dot(Epsilon_rx, dir_rx) * dir_rx;
-            complex3 E_ref = reference[frequency_offset];
-            result[frequency_offset] += occupancy * E_pert + (1.0f - occupancy) * E_ref;
+            for(int j = 0; j < params.scene.signal.n_samples; j++)
+            {
+                int delta_offset = i * params.scene.signal.n_samples + j;
+                int offset = ray_offset + delta_offset;
 
-            // Occupancy gradient
-            partial_occupancy += elsum(params.many_worlds.e_field_gradient[frequency_offset] * (params.many_worlds.weight * (E_pert - E_ref))).real;
+                complex minusjomega = make_complex(0.0f, -(params.scene.signal.frequency_range.x + j * params.scene.signal.f_step));
+                complex factor = minusjomega * (dist_tx / (dist_rx * 2 * PI * C0 * sender.ray_density * dot(-dir_tx, normal))) * expf(minusjomega * INV_C0 * (dist_tx + dist_rx));
+                float3 vector = cross(normal, cross(dir_tx, normalize(cross(dir_tx, sender.left))));
+                complex3 Epsilon_rx = factor * vector;
+                complex3 E_pert = Epsilon_rx - dot(Epsilon_rx, dir_rx) * dir_rx;
+                complex3 E_ref = reference[offset];
 
-            // Normal gradient
-            complex3 dL_dE_rx_rt = occupancy * params.many_worlds.weight * params.many_worlds.e_field_gradient[frequency_offset];
+                // Occupancy gradient
+                partial_occupancy += elsum(params.many_worlds.e_field_gradient[delta_offset] * (params.many_worlds.weight * (E_pert - E_ref))).real;
 
-            complex3 dL_dEpsilon =  dL_dE_rx_rt.x * (make_float3(1.0f, 0.0f, 0.0f) - dir_rx.x * dir_rx) + 
-                                    dL_dE_rx_rt.y * (make_float3(0.0f, 1.0f, 0.0f) - dir_rx.y * dir_rx) + 
-                                    dL_dE_rx_rt.z * (make_float3(0.0f, 0.0f, 1.0f) - dir_rx.z * dir_rx);
+                // Normal gradient
+                complex3 dL_dE_rx_rt = occupancy * params.many_worlds.weight * params.many_worlds.e_field_gradient[delta_offset];
 
-            float tmp0 = 1 / dot(dir_tx, normal);
-            float3 tmp1 = cross(dir_tx, normalize(cross(dir_tx, sender.left)));
-            partial_normal += -real(conj(dL_dEpsilon.x) * (factor * (vector.x * dir_tx * tmp0 + make_float3(0.0f, -tmp1.z, tmp1.y))) + 
-                                    conj(dL_dEpsilon.y) * (factor * (vector.y * dir_tx * tmp0 + make_float3(tmp1.z, 0.0f, -tmp1.x))) + 
-                                    conj(dL_dEpsilon.z) * (factor * (vector.z * dir_tx * tmp0 + make_float3(-tmp1.y, tmp1.x, 0.0f))));
+                complex3 dL_dEpsilon =  dL_dE_rx_rt.x * (make_float3(1.0f, 0.0f, 0.0f) - dir_rx.x * dir_rx) + 
+                                        dL_dE_rx_rt.y * (make_float3(0.0f, 1.0f, 0.0f) - dir_rx.y * dir_rx) + 
+                                        dL_dE_rx_rt.z * (make_float3(0.0f, 0.0f, 1.0f) - dir_rx.z * dir_rx);
+
+                float tmp0 = 1 / dot(dir_tx, normal);
+                float3 tmp1 = cross(dir_tx, normalize(cross(dir_tx, sender.left)));
+                partial_normal += -real(conj(dL_dEpsilon.x) * (factor * (vector.x * dir_tx * tmp0 + make_float3(0.0f, -tmp1.z, tmp1.y))) + 
+                                        conj(dL_dEpsilon.y) * (factor * (vector.y * dir_tx * tmp0 + make_float3(tmp1.z, 0.0f, -tmp1.x))) + 
+                                        conj(dL_dEpsilon.z) * (factor * (vector.z * dir_tx * tmp0 + make_float3(-tmp1.y, tmp1.x, 0.0f))));
+            }
         }
     }
 
-    float3 partial_occupancy_gradient = -(partial_normal.x * (make_float3(1.0f, 0.0f, 0.0f) - normal.x * normal) + 
-                                        partial_normal.y * (make_float3(0.0f, 1.0f, 0.0f) - normal.y * normal) + 
+    float3 partial_occupancy_gradient;
+    if(length(occupancy_gradient) < NUMERICAL_EPS)
+    {
+        // // Here we have chosen a random normal vector, as the occupancy field is flat at the current location
+        // // Even though the normal vector is not linked with the occupancy field, it can still provide useful information for the optimization process
+        // // -partial_normal is the update direction to the normal vector, to yield a lower loss as compared to the unmodified normal vector (though the impact might still be detrimental)
+        // // Thus it is reasonable to argue, that if -partial_normal and normal align, the random normal vector might have a beneficial impact on the loss
+        // // Conversely, if -partial_normal and normal point in opposite directions, the random normal vector might have a detrimental impact on the loss
+        // // Here, a positive overall impact is simply assumed if normal and -partial_normal lie in the same half space
+        // // If this is the case, we can use the normal vector to update the occupancy field as described below
+        // // If this is not the case, the partial_occupancy_gradient is simply set to zero 
+
+        // if(dot(-partial_normal, normal) <= 0.0f)
+        // {
+            partial_occupancy_gradient = make_float3(0.0f, 0.0f, 0.0f);
+        // }
+        // else
+        // {
+        //     // Here, we assume that by using the normal vector to guide the occupancy field, we have a positive impact on the loss
+        //     // Instead of using the normal vector directly, we perform one gradient descent step using partial_normal, to obtain a vector, which has a more beneficial impact on the loss than the current normal vector
+        //     float normal_update_weight = 1;
+        //     normal -= normal_update_weight * partial_normal;
+
+        //     // This updated normal vector is now roughly the direction the occupancy field should have at the current position to yield a lower loss as compared to being flat
+        //     // What we want to achieve, is that the negative gradient of the occupancy field aligns with this updated normal vector
+        //     // Therefore, the positive gradient of the occupancy field should point in the opposite direction of the updated normal vector
+        //     // In the default case where the normal vector is derived from the negative gradient of the occupancy field, -partial_occupancy_gradient is the update direction to the occupancy gradient to decrease the loss
+        //     // In this special case, where the normal vector is chosen randomly, we assume that if the gradient points towards -normal, the loss will decrease as compared to the current zero gradient
+        //     // Therefore, to make the update direction -partial_occupancy_gradient point towards -normal, we need to make partial_occupancy_gradient = normal
+        //     // This will cause the gradient descent step to make the gradient of the occupancy field align with -normal, thus making the derived normal align with normal 
+        //     float heuristic_weight = 1e-7;
+        //     partial_occupancy_gradient = heuristic_weight * normal;
+        // }
+    }
+    else
+    {
+        partial_occupancy_gradient = -(partial_normal.x * (make_float3(1.0f, 0.0f, 0.0f) - normal.x * normal) + 
+                                        partial_normal.y * (make_float3(0.0f, 1.0f, 0.0f) - normal.y * normal) +
                                         partial_normal.z * (make_float3(0.0f, 0.0f, 1.0f) - normal.z * normal)) / max(length(occupancy_gradient), 0.01f);
+    }
+
+
     BackpropManyWorlds(normalized_idx, partial_occupancy, partial_occupancy_gradient);
 }
 
@@ -278,11 +311,10 @@ static __forceinline__ __device__ void PerturbRay(const int &ray_offset, const f
         complex3 *result = params.scene.result;
         for(int i = 0; i < params.scene.n_receivers; i++)
         {
-            int receiver_offset = ray_offset + i * params.scene.signal.n_samples;
             for(int j = 0; j < params.scene.signal.n_samples; j++)
             {
-                int frequency_offset = receiver_offset + j;
-                result[frequency_offset] +=  params.many_worlds.weight * reference[frequency_offset];
+                int offset = ray_offset + i * params.scene.signal.n_samples + j;
+                result[offset] +=  params.many_worlds.weight * reference[offset];
             }
         }
     }

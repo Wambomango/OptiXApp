@@ -112,12 +112,12 @@ float Antenna::GetSolidAngle() const
     return 2 * data->fov.x * std::sin(data->fov.y);
 }
 
-int Antenna::GetNRays() const
+long Antenna::GetNRays() const
 {
     return data->n_rays;
 }
 
-int Antenna::GetNBatches() const
+long Antenna::GetNBatches() const
 {
     return data->n_batches;
 }

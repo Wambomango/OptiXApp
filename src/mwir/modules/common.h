@@ -15,8 +15,8 @@ struct alignas(16) AntennaData
     float2 fov;
     float solid_angle;
     float ray_density;
-    int n_rays;
-    int n_batches;
+    long n_rays;
+    long n_batches;
 };
 
 struct alignas(16) SignalData

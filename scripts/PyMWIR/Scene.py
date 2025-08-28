@@ -82,7 +82,6 @@ class Scene:
         __senders = []
         for sender in senders:
             __senders.append(sender.antenna)
-            sender.antenna = None
         return __senders
 
     def __SetReceivers(self, receivers):
@@ -93,7 +92,6 @@ class Scene:
         __receivers = []
         for receiver in receivers:
             __receivers.append(receiver.antenna)
-            receiver.antenna = None
         return __receivers
 
     def __SetSignal(self, signal):

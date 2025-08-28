@@ -41,11 +41,10 @@ extern "C" __global__ void __miss__geometry()
     int ray_offset = GetRayOffset(idx, params);
     for(int i = 0; i < params.scene.n_receivers; i++)
     {
-        int receiver_offset = ray_offset + i * params.scene.signal.n_samples;
         for(int j = 0; j < params.scene.signal.n_samples; j++)
         {
-            int frequency_offset = receiver_offset + j;
-            reference[frequency_offset] = make_complex3(0.0f);
+            int offset = ray_offset + i * params.scene.signal.n_samples + j;
+            reference[offset] = make_complex3(0.0f);
         }
     }
 }

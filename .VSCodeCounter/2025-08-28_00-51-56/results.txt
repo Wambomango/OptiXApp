@@ -1,0 +1,130 @@
+Date : 2025-08-28 00:51:56
+Directory : /home/mario/Desktop/Masterarbeit/OptiXApp/src
+Total : 91 files,  10002 codes, 1501 comments, 1933 blanks, all 13436 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| C++      |         66 |      8,708 |      1,501 |      1,637 |     11,846 |
+| CUDA C++ |         11 |      1,049 |          0 |        181 |      1,230 |
+| GLSL     |         10 |        174 |          0 |         77 |        251 |
+| CMake    |          4 |         71 |          0 |         38 |        109 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                    | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                       |         91 |     10,002 |      1,501 |      1,933 |     13,436 |
+| . (Files)                                                                               |          1 |          3 |          0 |          0 |          3 |
+| mwir                                                                                    |         32 |      4,527 |        781 |        818 |      6,126 |
+| mwir (Files)                                                                            |         23 |      1,397 |          0 |        295 |      1,692 |
+| mwir/modules                                                                            |          9 |      3,130 |        781 |        523 |      4,434 |
+| pybindmwir                                                                              |         16 |        794 |          0 |        226 |      1,020 |
+| utils                                                                                   |         12 |      1,601 |          3 |        238 |      1,842 |
+| utils/opengl                                                                            |          5 |      1,160 |          2 |        149 |      1,311 |
+| utils/optix                                                                             |          7 |        441 |          1 |         89 |        531 |
+| viewer                                                                                  |         30 |      3,077 |        717 |        651 |      4,445 |
+| viewer (Files)                                                                          |         15 |      1,030 |         10 |        229 |      1,269 |
+| viewer/modules                                                                          |          4 |      1,866 |        707 |        344 |      2,917 |
+| viewer/shader                                                                           |         11 |        181 |          0 |         78 |        259 |
++-----------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                                | language | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/CMakeLists.txt                            | CMake    |          3 |          0 |          0 |          3 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/CMakeLists.txt                       | CMake    |         27 |          0 |         17 |         44 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/antenna.cpp                          | C++      |        113 |          0 |         22 |        135 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/antenna.hpp                          | C++      |         37 |          0 |         10 |         47 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/context.hpp                          | C++      |         21 |          0 |          4 |         25 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/function_table_definition.cu         | CUDA C++ |          1 |          0 |          1 |          2 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/kernels.cu                           | CUDA C++ |         31 |          0 |          7 |         38 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/kernels.hpp                          | C++      |          5 |          0 |          2 |          7 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/many_worlds.cu                       | CUDA C++ |        237 |          0 |         28 |        265 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/many_worlds.hpp                      | C++      |         62 |          0 |         14 |         76 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/many_worlds_pipeline.cpp             | C++      |         64 |          0 |         21 |         85 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/many_worlds_pipeline.hpp             | C++      |         30 |          0 |          8 |         38 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/many_worlds_renderer.cu              | CUDA C++ |        101 |          0 |         18 |        119 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/many_worlds_renderer.hpp             | C++      |         33 |          0 |         12 |         45 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/mesh.cpp                             | C++      |         63 |          0 |         10 |         73 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/mesh.hpp                             | C++      |         29 |          0 |         10 |         39 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/modules/common.h                     | C++      |         69 |          0 |         15 |         84 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/modules/complex.h                    | C++      |        849 |        113 |        113 |      1,075 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/modules/defines.h                    | C++      |          7 |          0 |          4 |         11 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/modules/many_worlds_render_module.cu | CUDA C++ |        103 |          0 |         14 |        117 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/modules/many_worlds_render_module.h  | C++      |        264 |         37 |         46 |        347 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/modules/render_module.cu             | CUDA C++ |         51 |          0 |          9 |         60 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/modules/render_module.h              | C++      |          8 |          0 |          3 |         11 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/modules/utils.h                      | C++      |         96 |          0 |         14 |        110 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/modules/vec_math.h                   | C++      |      1,683 |        631 |        305 |      2,619 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/pipeline.cpp                         | C++      |         53 |          0 |         14 |         67 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/pipeline.hpp                         | C++      |         28 |          0 |          9 |         37 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/renderer.cu                          | CUDA C++ |         51 |          0 |         13 |         64 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/renderer.hpp                         | C++      |         25 |          0 |         11 |         36 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/scene.cu                             | CUDA C++ |        222 |          0 |         28 |        250 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/scene.hpp                            | C++      |         70 |          0 |         16 |         86 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/signal.cpp                           | C++      |         69 |          0 |         13 |         82 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/mwir/signal.hpp                           | C++      |         25 |          0 |          7 |         32 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/CMakeLists.txt                 | CMake    |         13 |          0 |         15 |         28 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/antenna.cpp                    | C++      |        147 |          0 |         29 |        176 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/antenna.hpp                    | C++      |         28 |          0 |         10 |         38 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/many_worlds.cpp                | C++      |        128 |          0 |         23 |        151 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/many_worlds.hpp                | C++      |         26 |          0 |         10 |         36 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/many_worlds_renderer.cpp       | C++      |         29 |          0 |          9 |         38 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/many_worlds_renderer.hpp       | C++      |         18 |          0 |         12 |         30 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/mesh.cpp                       | C++      |         69 |          0 |         17 |         86 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/mesh.hpp                       | C++      |         21 |          0 |          8 |         29 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/pybindmwir.cpp                 | C++      |         21 |          0 |          9 |         30 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/renderer.cpp                   | C++      |         20 |          0 |         10 |         30 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/renderer.hpp                   | C++      |         15 |          0 |         10 |         25 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/scene.cpp                      | C++      |        139 |          0 |         25 |        164 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/scene.hpp                      | C++      |         29 |          0 |         11 |         40 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/signal.cpp                     | C++      |         70 |          0 |         17 |         87 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/pybindmwir/signal.hpp                     | C++      |         21 |          0 |         11 |         32 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/opengl/buffer.hpp                   | C++      |        242 |          0 |         34 |        276 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/opengl/context.hpp                  | C++      |        193 |          1 |         20 |        214 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/opengl/shader.hpp                   | C++      |        487 |          1 |         84 |        572 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/opengl/texture.hpp                  | C++      |          9 |          0 |          4 |         13 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/opengl/vertex_array.hpp             | C++      |        229 |          0 |          7 |        236 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/optix/context.hpp                   | C++      |         87 |          0 |         13 |        100 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/optix/module.hpp                    | C++      |         35 |          0 |          8 |         43 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/optix/pipeline.hpp                  | C++      |         47 |          0 |          8 |         55 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/optix/program_group.hpp             | C++      |         29 |          0 |          5 |         34 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/optix/sbt_record.hpp                | C++      |         59 |          0 |         14 |         73 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/optix/torch.hpp                     | C++      |         55 |          0 |         23 |         78 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/utils/optix/utils.hpp                     | C++      |        129 |          1 |         18 |        148 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/CMakeLists.txt                     | CMake    |         28 |          0 |          6 |         34 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/bindings.hpp                       | C++      |          2 |          0 |          3 |          5 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/camera.cpp                         | C++      |        199 |          0 |         19 |        218 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/camera.hpp                         | C++      |         47 |          0 |          9 |         56 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/gl_renderer.cpp                    | C++      |         84 |         10 |         25 |        119 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/gl_renderer.hpp                    | C++      |         32 |          0 |         10 |         42 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/main.cu                            | CUDA C++ |         61 |          0 |         16 |         77 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/modules/render_module.cu           | CUDA C++ |         81 |          0 |         17 |         98 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/modules/render_module.h            | C++      |         23 |         30 |          4 |         57 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/modules/utils.h                    | C++      |         79 |         46 |         18 |        143 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/modules/vec_math.h                 | C++      |      1,683 |        631 |        305 |      2,619 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/optix_renderer.cu                  | CUDA C++ |        110 |          0 |         30 |        140 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/optix_renderer.hpp                 | C++      |         44 |          0 |         12 |         56 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/scene.cpp                          | C++      |         78 |          0 |         10 |         88 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/scene.hpp                          | C++      |         18 |          0 |          7 |         25 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/bindings                    | C++      |          7 |          0 |          1 |          8 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/deferred.frag               | GLSL     |         34 |          0 |         15 |         49 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/deferred.vert               | GLSL     |          7 |          0 |          3 |         10 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/prepass.frag                | GLSL     |          9 |          0 |          6 |         15 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/prepass.vert                | GLSL     |         12 |          0 |          4 |         16 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/screenquad.frag             | GLSL     |          8 |          0 |          7 |         15 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/screenquad.vert             | GLSL     |          7 |          0 |          3 |         10 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/ssao.frag                   | GLSL     |         62 |          0 |         20 |         82 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/ssao.vert                   | GLSL     |          7 |          0 |          3 |         10 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/ssao_blur.frag              | GLSL     |         21 |          0 |         13 |         34 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/shader/ssao_blur.vert              | GLSL     |          7 |          0 |          3 |         10 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/ssao.cpp                           | C++      |         66 |          0 |         22 |         88 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/ssao.hpp                           | C++      |         23 |          0 |          8 |         31 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/window.cpp                         | C++      |        188 |          0 |         39 |        227 |
+| /home/mario/Desktop/Masterarbeit/OptiXApp/src/viewer/window.hpp                         | C++      |         50 |          0 |         13 |         63 |
+| Total                                                                                   |          |     10,002 |      1,501 |      1,933 |     13,436 |
++-----------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+

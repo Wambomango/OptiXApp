@@ -26,6 +26,7 @@ torch::Tensor ManyWorldsRenderer::Forward(Scene &scene, ManyWorlds &many_worlds,
     for(int i = 0; i < params.scene.n_senders; i++)
     {
         RenderAntenna(i);
+        CUDA_CHECK(cudaStreamSynchronize(stream));
     }
     
     MergeResults<<<dim3(params.scene.n_receivers, params.scene.signal.n_samples, 1), OPTIX_MAX_GRID_DIM, sizeof(complex3) * OPTIX_MAX_GRID_DIM, stream>>>(reinterpret_cast<Params *>(d_params));
@@ -42,6 +43,7 @@ torch::Tensor ManyWorldsRenderer::Backward(Scene &scene, ManyWorlds &many_worlds
     for(int i = 0; i < params.scene.n_senders; i++)
     {
         RenderAntenna(i);
+        CUDA_CHECK(cudaStreamSynchronize(stream));
     }
     CUDA_CHECK(cudaStreamSynchronize(stream));
 
@@ -81,15 +83,20 @@ torch::Tensor ManyWorldsRenderer::PrepareBackward(Scene &scene, ManyWorlds &many
         std::srand(static_cast<unsigned int>(std::time(nullptr)));
         params.seed = std::rand();
     }
+
     CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void *>(d_params), &params, sizeof(Params), cudaMemcpyHostToDevice, stream));
     return occupancy_gradient;
 }
 
 void ManyWorldsRenderer::CheckOutputGradient(torch::Tensor &output_gradient)
 {
-    if (output_gradient.device().type() != torch::kCUDA)
+    if (!output_gradient.device().is_cuda())
     {
         throw std::runtime_error("Output gradient must be on CUDA device");
+    }
+    if (!output_gradient.is_contiguous())
+    {
+        throw std::runtime_error("Output gradient must be contiguous");
     }
     if (output_gradient.dtype() != torch::kComplexFloat)
     {

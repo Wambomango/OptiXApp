@@ -25,6 +25,7 @@ torch::Tensor Renderer::Render(Scene &scene, std::optional<torch::Tensor> opt_re
     for(int i = 0; i < params.scene.n_senders; i++)
     {
         RenderAntenna(i);
+        CUDA_CHECK(cudaStreamSynchronize(stream));
     }
 
     MergeResults<<<dim3(params.scene.n_receivers, params.scene.signal.n_samples, 1), OPTIX_MAX_GRID_DIM, sizeof(complex3) * OPTIX_MAX_GRID_DIM, stream>>>(reinterpret_cast<Params *>(d_params));
@@ -35,8 +36,9 @@ torch::Tensor Renderer::Render(Scene &scene, std::optional<torch::Tensor> opt_re
 }
 
 torch::Tensor Renderer::PrepareRender(Scene &scene, std::optional<torch::Tensor> opt_result_tensor, std::optional<int> seed)
-{
+{   
     torch::Tensor result_tensor = scene.PrepareRendering(params, opt_result_tensor, stream);
+
     if (seed.has_value())
     {
         params.seed = seed.value();

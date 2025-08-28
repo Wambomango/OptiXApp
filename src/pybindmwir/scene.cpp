@@ -18,7 +18,7 @@ Scene::Scene(std::unique_ptr<MWIR::Scene> &&impl)
 }
 
 Scene::Scene(std::shared_ptr<Mesh> mesh, std::vector<std::shared_ptr<Antenna>> senders, std::vector<std::shared_ptr<Antenna>> receivers, std::shared_ptr<Signal> signal)
-{
+{   
     std::vector<MWIR::Antenna> senders_mwir;
     for (auto& sender : senders)
     {
@@ -29,7 +29,6 @@ Scene::Scene(std::shared_ptr<Mesh> mesh, std::vector<std::shared_ptr<Antenna>> s
     {
         receivers_mwir.push_back(*(receiver->mwir_antenna_));
     }
-
     mwir_scene_ = std::make_unique<MWIR::Scene>(*(mesh->mwir_mesh_), senders_mwir, receivers_mwir, *(signal->mwir_signal_));
 }
 

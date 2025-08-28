@@ -26,7 +26,7 @@ static __forceinline__ __device__ int GetRayOffset(const uint3 &idx, const Param
 static __forceinline__ __device__ float3 SafeNormalize(const float3 &v, curandState &rand_state)
 {
     float len = length(v);
-    if (len > 1e-8f)
+    if (len > NUMERICAL_EPS)
     {
         return v / len;
     }
@@ -61,42 +61,48 @@ static __device__ void CalculateE(const Params &p, const int &ray_offset, const 
     float dist_tx = length(p_hit - pos_tx);
     for(int i = 0; i < p.scene.n_receivers; i++)
     {
-        int receiver_offset = ray_offset + i * p.scene.signal.n_samples;
         AntennaData receiver = p.scene.d_receivers[i];
         float3 dir_rx = normalize(receiver.position - p_hit);
-                
-        if(dot(dir_rx, n_hit) <= 0.0f)
+        float dist_rx = length(receiver.position - p_hit);        
+             
+        bool success = false;
+        if(dot(dir_rx, n_hit) > 0.0f)
         {
-            continue; 
+
+            unsigned int p0;
+            optixTrace( p.scene.mesh_handle,
+                        p_hit + n_hit * 0.001f, 
+                        dir_rx,
+                        0.0f,          
+                        dist_rx,         
+                        0.0f, 
+                        OptixVisibilityMask( 255 ),
+                        OPTIX_RAY_FLAG_NONE,
+                        1,                  
+                        0,     
+                        1,              
+                        p0);
+            success = (__uint_as_float(p0) <= 0.0f); 
         }
 
-        float dist_rx = length(receiver.position - p_hit);
-        unsigned int p0;
-        optixTrace( p.scene.mesh_handle,
-                    p_hit + n_hit * 0.001f, 
-                    dir_rx,
-                    0.0f,          
-                    dist_rx,         
-                    0.0f, 
-                    OptixVisibilityMask( 255 ),
-                    OPTIX_RAY_FLAG_NONE,
-                    1,                  
-                    0,     
-                    1,              
-                    p0);
-
-        if(__uint_as_float(p0) > 0.0f)
+        if(success)
         {
-            continue; 
+            for(int j = 0; j < p.scene.signal.n_samples; j++)
+            {
+                int offset = ray_offset + i * p.scene.signal.n_samples + j;
+                complex minusjomega = make_complex(0.0f, -(p.scene.signal.frequency_range.x + j * p.scene.signal.f_step));
+                complex3 Epsilon_rx = minusjomega * (dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit) * dist_rx)) * cross(n_hit, cross(dir_tx, normalize(cross(dir_tx, sender.left)))) * expf(minusjomega * INV_C0 * (dist_tx + dist_rx));
+                complex3 E_rx = Epsilon_rx - dot(Epsilon_rx, dir_rx) * dir_rx;
+                result[offset] = (overwrite) ? (E_rx) : (result[offset] + E_rx);
+            }
         }
-
-        for(int j = 0; j < p.scene.signal.n_samples; j++)
+        else if(overwrite)
         {
-            int frequency_offset = receiver_offset + j;
-            complex minusjomega = make_complex(0.0f, -(p.scene.signal.frequency_range.x + j * p.scene.signal.f_step));
-            complex3 Epsilon_rx = minusjomega * (dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit) * dist_rx)) * cross(n_hit, cross(dir_tx, normalize(cross(dir_tx, sender.left)))) * expf(minusjomega * INV_C0 * (dist_tx + dist_rx));
-            complex3 E_rx = Epsilon_rx - dot(Epsilon_rx, dir_rx) * dir_rx;
-            result[frequency_offset] = (overwrite) ? (E_rx) : (result[frequency_offset] + E_rx);
+            for(int j = 0; j < p.scene.signal.n_samples; j++)
+            {
+                int offset = ray_offset + i * p.scene.signal.n_samples + j;
+                result[offset] = make_complex3(0.0f);
+            }
         }
     }
 }

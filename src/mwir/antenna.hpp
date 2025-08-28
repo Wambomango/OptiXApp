@@ -24,8 +24,8 @@ class Antenna
         float GetRayDensity() const;
         glm::mat3 GetRotationMatrix() const;
         float GetSolidAngle() const;
-        int GetNRays() const;
-        int GetNBatches() const;
+        long GetNRays() const;
+        long GetNBatches() const;
 
     private:
         void UpdateParameters();
@@ -36,8 +36,8 @@ class Antenna
             glm::vec3 euler;
             glm::vec2 fov;
             float ray_density;
-            int n_rays;
-            int n_batches;
+            long n_rays;
+            long n_batches;
         };
 
         std::shared_ptr<AntennaData> data;

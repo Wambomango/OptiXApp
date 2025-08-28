@@ -1,5 +1,5 @@
 
-#define OPTIX_MAX_GRID_DIM 128
+#define OPTIX_MAX_GRID_DIM 256
 
 #define MU0 4 * M_PI * 1e-7f
 #define EPS0 8.854187817e-12f
@@ -7,3 +7,5 @@
 #define INV_C0 3.33564095e-9f
 
 #define PI 3.14159265358979323846f
+
+#define NUMERICAL_EPS 1e-7f   
