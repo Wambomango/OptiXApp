@@ -8,22 +8,39 @@
 #include "vec_math.h"
 #include "defines.h"
 
-__forceinline__ __device__ float3 exp( const float3& x )
+
+
+static __device__ void PrintFloat(const float &f)
+{
+    printf("%f\n", f);
+}
+
+static __device__ void PrintFloat3(const float3 &f)
+{
+    printf("%f %f %f\n", f.x, f.y, f.z);
+}
+
+static __device__ void PrintComplex3(const complex3 &c)
+{
+    printf("(%f,%f) (%f,%f) (%f,%f)\n", c.x.real, c.x.imag, c.y.real, c.y.imag, c.z.real, c.z.imag);
+}
+
+static __device__ float3 exp( const float3& x )
 {
     return make_float3( exp( x.x ), exp( x.y ), exp( x.z ) );
 }
 
-static __forceinline__ __device__ int LinearizeIndex(const int &x, const int &y, const int &z, const int3 &shape)
+static __device__ int LinearizeIndex(const int &x, const int &y, const int &z, const int3 &shape)
 {
     return x * shape.y * shape.z + y * shape.z + z;
 }
 
-static __forceinline__ __device__ int GetRayOffset(const uint3 &idx, const Params &p)
+static __device__ int GetRayOffset(const uint3 &idx, const Params &p)
 {
     return idx.x * OPTIX_MAX_GRID_DIM * p.scene.n_receivers * p.scene.signal.n_samples + idx.y * p.scene.n_receivers * p.scene.signal.n_samples;
 }
 
-static __forceinline__ __device__ float3 SafeNormalize(const float3 &v, curandState &rand_state)
+static __device__ float3 SafeNormalize(const float3 &v, curandState &rand_state)
 {
     float len = length(v);
     if (len > NUMERICAL_EPS)
@@ -43,7 +60,7 @@ static __forceinline__ __device__ float3 SafeNormalize(const float3 &v, curandSt
     }
 }
 
-static __forceinline__ __device__ float3 SampleDir(const AntennaData& sender, curandState& rand_state)
+static __device__ float3 SampleDir(const AntennaData& sender, curandState& rand_state)
 {
     float u = curand_uniform(&rand_state);
     float v = curand_uniform(&rand_state);
@@ -85,13 +102,14 @@ static __device__ void CalculateE(const Params &p, const int &ray_offset, const 
             success = (__uint_as_float(p0) <= 0.0f); 
         }
 
+
         if(success)
         {
             for(int j = 0; j < p.scene.signal.n_samples; j++)
             {
                 int offset = ray_offset + i * p.scene.signal.n_samples + j;
-                complex minusjomega = make_complex(0.0f, -(p.scene.signal.frequency_range.x + j * p.scene.signal.f_step));
-                complex3 Epsilon_rx = minusjomega * (dist_tx / (2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit) * dist_rx)) * cross(n_hit, cross(dir_tx, normalize(cross(dir_tx, sender.left)))) * expf(minusjomega * INV_C0 * (dist_tx + dist_rx));
+                complex jomega = make_complex(0.0f, (p.scene.signal.frequency_range.x + j * p.scene.signal.f_step));
+                complex3 Epsilon_rx = -jomega * (dist_tx / (dist_rx * 2 * PI * C0 * sender.ray_density * dot(-dir_tx, n_hit))) * cross(n_hit, cross(dir_tx, normalize(cross(dir_tx, sender.left)))) * expf(jomega * INV_C0 * (dist_tx + dist_rx));
                 complex3 E_rx = Epsilon_rx - dot(Epsilon_rx, dir_rx) * dir_rx;
                 result[offset] = (overwrite) ? (E_rx) : (result[offset] + E_rx);
             }
@@ -106,4 +124,6 @@ static __device__ void CalculateE(const Params &p, const int &ray_offset, const 
         }
     }
 }
+
+
 

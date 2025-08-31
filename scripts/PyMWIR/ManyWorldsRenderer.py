@@ -22,10 +22,6 @@ class ManyWorldsRendererFunction(torch.autograd.Function):
         scene = ctx.scene
         many_worlds = ctx.many_worlds
         seed = ctx.seed
-
-        print("Gradient wrt output", grad_output)
-
-
         occupancy_gradient = inverse_renderer.Backward(scene.scene, many_worlds.many_worlds, grad_output, None, seed)
         return occupancy_gradient, None 
 

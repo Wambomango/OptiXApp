@@ -26,6 +26,8 @@ extern "C" __global__ void __raygen__rg()
                     0,     
                     0,
                     p0);
+
+
         float t_hit = __uint_as_float(p0);
         PerturbRay(ray_offset, p_tx, dir_tx, t_hit, rand_state);
     }
@@ -56,11 +58,11 @@ extern "C" __global__ void __closesthit__geometry()
     float3 vertices[3] = {};
     optixGetTriangleVertexData(optixGetGASTraversableHandle(), optixGetPrimitiveIndex(), optixGetSbtGASIndex(), 0, vertices );
     float3 n_hit = normalize( cross( vertices[1] - vertices[0], vertices[2] - vertices[0] ) );
+    int ray_offset = GetRayOffset(idx, params);
     if(dot(n_hit, optixGetWorldRayDirection()) >= 0.0f)
     {
         return;
     }
-    int ray_offset = GetRayOffset(idx, params);
     CalculateE(params, ray_offset, optixGetWorldRayDirection(), p_hit, n_hit, params.many_worlds.reference, true);
 }
 

@@ -148,9 +148,9 @@ torch::Tensor ManyWorlds::PrepareBackward(Params& params, torch::Tensor &e_field
 
 void ManyWorlds::UpdateShape()
 {
-    glm::ivec3 new_shape = {static_cast<int>(std::ceil((data->max.x - data->min.x) / data->resolution)),
-                            static_cast<int>(std::ceil((data->max.y - data->min.y) / data->resolution)),
-                            static_cast<int>(std::ceil((data->max.z - data->min.z) / data->resolution))};
+    glm::ivec3 new_shape = {static_cast<int>(std::round((data->max.x - data->min.x) / data->resolution)),
+                            static_cast<int>(std::round((data->max.y - data->min.y) / data->resolution)),
+                            static_cast<int>(std::round((data->max.z - data->min.z) / data->resolution))};
     if (new_shape.x <= 0 || new_shape.y <= 0 || new_shape.z <= 0)
     {
         throw std::invalid_argument("Shape dimensions must be positive. Check min, max, and resolution values.");

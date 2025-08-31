@@ -129,7 +129,6 @@ static __forceinline__ __device__ void AddPerturbationForward(const int &ray_off
         // Forward facing surface patch, calculate the perturbation, blend between reference and perturbation
         CalculateE(params, ray_offset, dir_tx, p_sample, normal, params.many_worlds.perturbation, true); 
     }
-    
     complex3 *reference = params.many_worlds.reference;
     complex3 *perturbation = params.many_worlds.perturbation;
     complex3 *result = params.scene.result;
@@ -154,6 +153,13 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
                                         (p_sample.y - params.many_worlds.min.y) / (params.many_worlds.resolution * params.many_worlds.shape.y),
                                         (p_sample.z - params.many_worlds.min.z) / (params.many_worlds.resolution * params.many_worlds.shape.z));
 
+    // if(ray_offset == 0)
+    // {
+    //     PrintFloat3(p_sample);
+    //     PrintFloat3(normalized_idx);
+    // }
+
+
     if(normalized_idx.x < 0 || normalized_idx.x > 1 ||
        normalized_idx.y < 0 || normalized_idx.y > 1 ||
        normalized_idx.z < 0 || normalized_idx.z > 1)
@@ -165,12 +171,37 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
     float3 occupancy_gradient;
     SampleManyWorlds(normalized_idx, occupancy, occupancy_gradient);
 
+    // if(ray_offset == 0)
+    // {
+    //     PrintFloat(occupancy);
+    //     PrintFloat3(occupancy_gradient);
+    // }
+
     float3 normal = SafeNormalize(-occupancy_gradient, rand_state);
+    normal = normalize(make_float3(-1, 0, 0));
     if(dot(normal, dir_tx) >= 0.0f)
     {
+        // if(ray_offset == 0)
+        // {
+        //     printf("BACKFACING \n");
+        // }
         // Backfacing surface patch does not propagate gradients
         return;
     }
+    else
+    {
+        // if(ray_offset == 0)
+        // {
+        //     printf("FRONTFACING \n");
+        // }
+    }
+
+
+    // if(ray_offset == 0)
+    // {
+    //     PrintFloat3(normal);
+    // }
+
 
     complex3 *reference = params.many_worlds.reference;
     float partial_occupancy = 0.0f;
@@ -212,20 +243,24 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
             {
                 int delta_offset = i * params.scene.signal.n_samples + j;
                 int offset = ray_offset + delta_offset;
-
-                complex minusjomega = make_complex(0.0f, -(params.scene.signal.frequency_range.x + j * params.scene.signal.f_step));
-                complex factor = minusjomega * (dist_tx / (dist_rx * 2 * PI * C0 * sender.ray_density * dot(-dir_tx, normal))) * expf(minusjomega * INV_C0 * (dist_tx + dist_rx));
+                complex jomega = make_complex(0.0f, (params.scene.signal.frequency_range.x + j * params.scene.signal.f_step));
+                complex factor = -jomega * (dist_tx / (dist_rx * 2 * PI * C0 * sender.ray_density * dot(-dir_tx, normal))) * expf(jomega * INV_C0 * (dist_tx + dist_rx));
                 float3 vector = cross(normal, cross(dir_tx, normalize(cross(dir_tx, sender.left))));
                 complex3 Epsilon_rx = factor * vector;
                 complex3 E_pert = Epsilon_rx - dot(Epsilon_rx, dir_rx) * dir_rx;
                 complex3 E_ref = reference[offset];
+                // if(ray_offset == 0)
+                // {
+                //     PrintComplex3(E_ref * 1E16);
+                //     PrintComplex3(E_pert * 1E16);
+                //     PrintComplex3(params.many_worlds.e_field_gradient[delta_offset]);
+                // }
 
                 // Occupancy gradient
-                partial_occupancy += elsum(params.many_worlds.e_field_gradient[delta_offset] * (params.many_worlds.weight * (E_pert - E_ref))).real;
+                partial_occupancy += elsum(conj(params.many_worlds.e_field_gradient[delta_offset]) * (params.many_worlds.weight * (E_pert - E_ref))).real;
 
                 // Normal gradient
                 complex3 dL_dE_rx_rt = occupancy * params.many_worlds.weight * params.many_worlds.e_field_gradient[delta_offset];
-
                 complex3 dL_dEpsilon =  dL_dE_rx_rt.x * (make_float3(1.0f, 0.0f, 0.0f) - dir_rx.x * dir_rx) + 
                                         dL_dE_rx_rt.y * (make_float3(0.0f, 1.0f, 0.0f) - dir_rx.y * dir_rx) + 
                                         dL_dE_rx_rt.z * (make_float3(0.0f, 0.0f, 1.0f) - dir_rx.z * dir_rx);
@@ -239,41 +274,15 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
         }
     }
 
-    float3 partial_occupancy_gradient;
-    if(length(occupancy_gradient) < NUMERICAL_EPS)
-    {
-        // // Here we have chosen a random normal vector, as the occupancy field is flat at the current location
-        // // Even though the normal vector is not linked with the occupancy field, it can still provide useful information for the optimization process
-        // // -partial_normal is the update direction to the normal vector, to yield a lower loss as compared to the unmodified normal vector (though the impact might still be detrimental)
-        // // Thus it is reasonable to argue, that if -partial_normal and normal align, the random normal vector might have a beneficial impact on the loss
-        // // Conversely, if -partial_normal and normal point in opposite directions, the random normal vector might have a detrimental impact on the loss
-        // // Here, a positive overall impact is simply assumed if normal and -partial_normal lie in the same half space
-        // // If this is the case, we can use the normal vector to update the occupancy field as described below
-        // // If this is not the case, the partial_occupancy_gradient is simply set to zero 
 
-        // if(dot(-partial_normal, normal) <= 0.0f)
-        // {
-            partial_occupancy_gradient = make_float3(0.0f, 0.0f, 0.0f);
-        // }
-        // else
-        // {
-        //     // Here, we assume that by using the normal vector to guide the occupancy field, we have a positive impact on the loss
-        //     // Instead of using the normal vector directly, we perform one gradient descent step using partial_normal, to obtain a vector, which has a more beneficial impact on the loss than the current normal vector
-        //     float normal_update_weight = 1;
-        //     normal -= normal_update_weight * partial_normal;
+    // if(ray_offset == 0)
+    // {
+    //     printf("%.20f \n", partial_occupancy);
+    // }
 
-        //     // This updated normal vector is now roughly the direction the occupancy field should have at the current position to yield a lower loss as compared to being flat
-        //     // What we want to achieve, is that the negative gradient of the occupancy field aligns with this updated normal vector
-        //     // Therefore, the positive gradient of the occupancy field should point in the opposite direction of the updated normal vector
-        //     // In the default case where the normal vector is derived from the negative gradient of the occupancy field, -partial_occupancy_gradient is the update direction to the occupancy gradient to decrease the loss
-        //     // In this special case, where the normal vector is chosen randomly, we assume that if the gradient points towards -normal, the loss will decrease as compared to the current zero gradient
-        //     // Therefore, to make the update direction -partial_occupancy_gradient point towards -normal, we need to make partial_occupancy_gradient = normal
-        //     // This will cause the gradient descent step to make the gradient of the occupancy field align with -normal, thus making the derived normal align with normal 
-        //     float heuristic_weight = 1e-7;
-        //     partial_occupancy_gradient = heuristic_weight * normal;
-        // }
-    }
-    else
+
+    float3 partial_occupancy_gradient = make_float3(0.0f, 0.0f, 0.0f);
+    if(length(occupancy_gradient) > NUMERICAL_EPS)
     {
         partial_occupancy_gradient = -(partial_normal.x * (make_float3(1.0f, 0.0f, 0.0f) - normal.x * normal) + 
                                         partial_normal.y * (make_float3(0.0f, 1.0f, 0.0f) - normal.y * normal) +
