@@ -153,13 +153,6 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
                                         (p_sample.y - params.many_worlds.min.y) / (params.many_worlds.resolution * params.many_worlds.shape.y),
                                         (p_sample.z - params.many_worlds.min.z) / (params.many_worlds.resolution * params.many_worlds.shape.z));
 
-    // if(ray_offset == 0)
-    // {
-    //     PrintFloat3(p_sample);
-    //     PrintFloat3(normalized_idx);
-    // }
-
-
     if(normalized_idx.x < 0 || normalized_idx.x > 1 ||
        normalized_idx.y < 0 || normalized_idx.y > 1 ||
        normalized_idx.z < 0 || normalized_idx.z > 1)
@@ -171,37 +164,13 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
     float3 occupancy_gradient;
     SampleManyWorlds(normalized_idx, occupancy, occupancy_gradient);
 
-    // if(ray_offset == 0)
-    // {
-    //     PrintFloat(occupancy);
-    //     PrintFloat3(occupancy_gradient);
-    // }
-
     float3 normal = SafeNormalize(-occupancy_gradient, rand_state);
     normal = normalize(make_float3(-1, 0, 0));
     if(dot(normal, dir_tx) >= 0.0f)
     {
-        // if(ray_offset == 0)
-        // {
-        //     printf("BACKFACING \n");
-        // }
         // Backfacing surface patch does not propagate gradients
         return;
     }
-    else
-    {
-        // if(ray_offset == 0)
-        // {
-        //     printf("FRONTFACING \n");
-        // }
-    }
-
-
-    // if(ray_offset == 0)
-    // {
-    //     PrintFloat3(normal);
-    // }
-
 
     complex3 *reference = params.many_worlds.reference;
     float partial_occupancy = 0.0f;
@@ -249,12 +218,6 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
                 complex3 Epsilon_rx = factor * vector;
                 complex3 E_pert = Epsilon_rx - dot(Epsilon_rx, dir_rx) * dir_rx;
                 complex3 E_ref = reference[offset];
-                // if(ray_offset == 0)
-                // {
-                //     PrintComplex3(E_ref * 1E16);
-                //     PrintComplex3(E_pert * 1E16);
-                //     PrintComplex3(params.many_worlds.e_field_gradient[delta_offset]);
-                // }
 
                 // Occupancy gradient
                 partial_occupancy += elsum(conj(params.many_worlds.e_field_gradient[delta_offset]) * (params.many_worlds.weight * (E_pert - E_ref))).real;
@@ -274,13 +237,6 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
         }
     }
 
-
-    // if(ray_offset == 0)
-    // {
-    //     printf("%.20f \n", partial_occupancy);
-    // }
-
-
     float3 partial_occupancy_gradient = make_float3(0.0f, 0.0f, 0.0f);
     if(length(occupancy_gradient) > NUMERICAL_EPS)
     {
@@ -288,8 +244,6 @@ static __forceinline__ __device__ void AddPerturbationBackward(const int &ray_of
                                         partial_normal.y * (make_float3(0.0f, 1.0f, 0.0f) - normal.y * normal) +
                                         partial_normal.z * (make_float3(0.0f, 0.0f, 1.0f) - normal.z * normal)) / max(length(occupancy_gradient), 0.01f);
     }
-
-
     BackpropManyWorlds(normalized_idx, partial_occupancy, partial_occupancy_gradient);
 }
 
