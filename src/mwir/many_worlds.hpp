@@ -48,6 +48,7 @@ class ManyWorlds
             bool min_updated = true;
             bool max_updated = true;
             torch::Tensor occupancy;
+            torch::Tensor quantized_occupancy;
             OptixTraversableHandle mesh_handle;
             CUdeviceptr d_mesh = 0;
             size_t buffer_bytes = 0;
@@ -64,6 +65,7 @@ class ManyWorlds
 
         void PrepareRendering(Params& params, bool backward, CUstream stream);
         void UpdateShape();
+        void QuantizeOccupancy(Params& params, CUstream stream);
         void UpdateBoundingBox(Params& params, CUstream stream);
         void UpdateBuffers(Params& params, CUstream stream);
         torch::Tensor AllocateGradTensor(Params &params, std::optional<torch::Tensor> opt_occupancy_gradient);

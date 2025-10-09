@@ -47,7 +47,7 @@ class Mesh:
         if type(many_worlds) is not ManyWorlds:
             raise TypeError("many_worlds must be of type ManyWorlds")
 
-        occupancy = many_worlds.GetOccupancy()
+        occupancy = many_worlds.GetOccupancy().cuda()
         padded_occupancy = torch.nn.functional.pad(occupancy, (1, 1, 1, 1, 1, 1), mode='constant', value=0)
         vertices, indices = marching_cubes.marching_cubes(padded_occupancy[None, :, :, :], threshold)
         if type(vertices[0]) is torch.Tensor and type(indices[0]) is torch.Tensor:

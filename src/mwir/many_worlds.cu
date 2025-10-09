@@ -145,7 +145,6 @@ torch::Tensor ManyWorlds::PrepareBackward(Params& params, torch::Tensor &e_field
     return AllocateGradTensor(params, opt_occupancy_gradient);
 }
 
-
 void ManyWorlds::UpdateShape()
 {
     glm::ivec3 new_shape = {static_cast<int>(std::round((data->max.x - data->min.x) / data->resolution)),
@@ -162,8 +161,38 @@ void ManyWorlds::UpdateShape()
         data->max.x = data->min.x + data->shape.x * data->resolution;
         data->max.y = data->min.y + data->shape.y * data->resolution;
         data->max.z = data->min.z + data->shape.z * data->resolution;
-        data->occupancy = torch::zeros({data->shape.x, data->shape.y, data->shape.z}, torch::dtype(torch::kFloat).device(torch::kCUDA, 0).requires_grad(true));
+        data->occupancy = torch::zeros({data->shape.x, data->shape.y, data->shape.z}, torch::dtype(torch::kFloat32).device(torch::kCPU, 0).requires_grad(true));
+        data->quantized_occupancy = torch::zeros({data->shape.x, data->shape.y, data->shape.z}, torch::dtype(torch::kUInt8).device(torch::kCUDA, 0));
     }
+}
+
+void ManyWorlds::PrepareRendering(Params& params, bool backward, CUstream stream)
+{
+    params.many_worlds.min = make_float3(data->min.x, data->min.y, data->min.z);
+    params.many_worlds.max = make_float3(data->max.x, data->max.y, data->max.z);
+    params.many_worlds.resolution = data->resolution;
+    params.many_worlds.n_samples = data->n_samples;
+    params.many_worlds.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
+    params.many_worlds.weight = 1.0f / data->n_samples;
+    params.many_worlds.backward = backward;
+    QuantizeOccupancy(params, stream);
+    UpdateBoundingBox(params, stream);
+    UpdateBuffers(params, stream);
+}
+
+void ManyWorlds::QuantizeOccupancy(Params& params, CUstream stream)
+{
+    if(data->occupancy.dtype() != torch::kFloat32)
+    {
+        throw std::runtime_error("Occupancy tensor must have dtype torch::kFloat32");
+    }
+    if(data->occupancy.dim() != 3 || data->occupancy.size(0) != data->shape.x || data->occupancy.size(1) != data->shape.y || data->occupancy.size(2) != data->shape.z)
+    {
+        throw std::runtime_error("Occupancy tensor must have shape [" + std::to_string(data->shape.x) + ", " + std::to_string(data->shape.y) + ", " + std::to_string(data->shape.z) + "]");
+    }   
+
+    data->quantized_occupancy = torch::clamp((data->occupancy.index({Slice(), Slice(), Slice()}) * 255.0f).to(torch::kUInt8).contiguous(), 0, 255).to(torch::kCUDA, 0);
+    params.many_worlds.quantized_occupancy = reinterpret_cast<unsigned char*>(data->quantized_occupancy.data_ptr());
 }
 
 void ManyWorlds::UpdateBoundingBox(Params& params, CUstream stream)
@@ -215,23 +244,6 @@ void ManyWorlds::UpdateBuffers(Params &params, CUstream stream)
     cudaMemsetAsync(reinterpret_cast<void *>(data->d_perturbation), 0, data->buffer_bytes, stream);
 }
 
-void ManyWorlds::PrepareRendering(Params& params, bool backward, CUstream stream)
-{
-    params.many_worlds.min = make_float3(data->min.x, data->min.y, data->min.z);
-    params.many_worlds.max = make_float3(data->max.x, data->max.y, data->max.z);
-    params.many_worlds.resolution = data->resolution;
-    params.many_worlds.n_samples = data->n_samples;
-    params.many_worlds.shape = make_int3(data->shape.x, data->shape.y, data->shape.z);
-    params.many_worlds.weight = 1.0f / data->n_samples;
-    params.many_worlds.backward = backward;
-    params.many_worlds.occupancy = reinterpret_cast<float*>(data->occupancy.data_ptr());
-    if(!data->occupancy.is_cuda())
-    {
-        throw std::runtime_error("Occupancy tensor must be on a CUDA device.");
-    }
-    UpdateBoundingBox(params, stream);
-    UpdateBuffers(params, stream);
-}
 
 torch::Tensor ManyWorlds::AllocateGradTensor(Params &params, std::optional<torch::Tensor> opt_occupancy_gradient)
 {
@@ -240,7 +252,7 @@ torch::Tensor ManyWorlds::AllocateGradTensor(Params &params, std::optional<torch
     if(opt_occupancy_gradient.has_value())
     {
         occupancy_gradient = opt_occupancy_gradient.value();
-        if(occupancy_gradient.device().type() != torch::kCUDA)
+        if(!occupancy_gradient.is_cuda())
         {
             throw std::runtime_error("Occupancy gradient tensor must be on CUDA device");
         }

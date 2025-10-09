@@ -136,6 +136,8 @@ void Camera::OnScroll(double xoffset, double yoffset)
 
 void Camera::OnMouseMove(double xpos, double ypos)
 {
+    if (!capture_mouse)
+        return;
     static double last_x = xpos;
     static double last_y = ypos;
     double xoffset = xpos - last_x;
@@ -151,6 +153,16 @@ void Camera::OnMouseMove(double xpos, double ypos)
 
 void Camera::OnMouseButton(int button, int action, int mods)
 {
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+    {
+        capture_mouse = true;
+        glfwSetInputMode(glfwGetCurrentContext(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+    else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+    {
+        capture_mouse = false;
+        glfwSetInputMode(glfwGetCurrentContext(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
 }
 
 void Camera::OnKey(int key, int scancode, int action, int mods)
@@ -182,6 +194,22 @@ void Camera::OnKey(int key, int scancode, int action, int mods)
                 break;
             case GLFW_KEY_LEFT_ALT:
                 slow = true;
+                break;
+            case GLFW_KEY_P:
+                position = glm::vec3(0.3f, -0.22f, 0.0f);
+                orientation = glm::vec3(90.0, 0.0f, 0.0f);
+                break;
+            case GLFW_KEY_O:
+                position = glm::vec3(0.11168395, -0.15062442, 0.11119652);
+                orientation = glm::vec3(40.200077, -20.600006, 0);
+                break;
+            case GLFW_KEY_U:
+                position = glm::vec3(0.08f, 0.0f, 0.0f);
+                orientation = glm::vec3(0.0f, 0.0f, 0.0f);
+                break;
+            case GLFW_KEY_I:
+                SPDLOG_CRITICAL("Position: ({}, {}, {})", position.x, position.y, position.z);
+                SPDLOG_CRITICAL("Orientation: ({}, {}, {})", orientation.x, orientation.y, orientation.z);
                 break;
         }
     }

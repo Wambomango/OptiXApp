@@ -18,17 +18,17 @@ renderer = mwir.Renderer()
 
 
 
-n_axis = 8
+n_axis = 1
 n_total = n_axis**2
 density = 1E9 / n_total
-distance = 0.005
+distance = 0.02
 axis = torch.arange(n_axis) * distance
 axis -= axis.max() / 2
 antennas = []
 for y in range(n_axis):
     for z in range(n_axis):
-        antennas.append(mwir.Antenna((0, axis[y], axis[z]), (0, 0, 0), (1, 1), density))
-signal = mwir.Signal((10e9, 20e9), 32)
+        antennas.append(mwir.Antenna((0, axis[y], axis[z]), (0, 0, 0), (0.5, 0.5), density))
+signal = mwir.Signal((10e9, 20e9), 2)
 
 
 mesh = mwir.Mesh(indices = torch.tensor([[0, 1, 2], [1, 3, 2]], dtype=torch.uint32))
@@ -41,45 +41,36 @@ many_worlds = mwir.ManyWorlds([plate_distance - many_worlds_scale, -many_worlds_
 
 with torch.no_grad():
     occupancy = many_worlds.GetOccupancy()
-    print(occupancy.shape)
     occupancy[:] = 0.01
 mesh_vertices = torch.tensor([[0, 1, 1], [0, 1, -1], [0, -1, 1], [0, -1, -1]], dtype=torch.float32) * plate_scale + torch.tensor([plate_distance, 0, 0], dtype=torch.float32)
 mesh.SetVertices(mesh_vertices)
 
 
 
-
-# t_start = time.time()
-# E_rx_ref = renderer.Render(scene)
-# E_rx = mw_renderer.Render(opt_scene, many_worlds)
-# loss = torch.sum(torch.abs(E_rx - E_rx_ref))
-# loss.backward()
-# t_stop = time.time()
-# print("Render time: ", t_stop - t_start)
-# torch.save(occupancy.grad, "/home/mario/Desktop/Masterarbeit/OptiXApp/scripts/occupancy_grad.pt")
-
+for i in range(10):
+    t_start = time.time()
+    E_rx_ref = renderer.Render(scene)
+    E_rx = mw_renderer.Render(opt_scene, many_worlds)
+    loss = torch.sum(torch.abs(E_rx - E_rx_ref))
+    loss.backward()
+    t_stop = time.time()
+    print("Render time: ", t_stop - t_start)
 
 
+    with torch.no_grad():
+        occupancy = many_worlds.GetOccupancy()
+        occupancy[:] += (-occupancy.grad / occupancy.grad.abs().max()) * 0.2
+        occupancy[:] += torch.clip(occupancy, 0, 1)
+        occupancy.grad = None
+    opt_mesh.FromManyWorlds(many_worlds, threshold = 0.5, add_bounds = False)
 
 
-
-
-
-
-
-
-occupancy_grad = torch.load("/home/mario/Desktop/Masterarbeit/OptiXApp/scripts/occupancy_grad.pt")
-with torch.no_grad():
-    occupancy = many_worlds.GetOccupancy()
-    occupancy[:] = (torch.max(-occupancy_grad, torch.tensor(0)) / occupancy_grad.abs().max()) * 2
-    occupancy[:] = torch.clip(occupancy, 0, 1)
-    
+opt_mesh.View()
 
 
 
-mesh = mwir.Mesh()
-mesh.FromManyWorlds(many_worlds, threshold = 0.5, add_bounds = True)
-mesh.View()
+
+
 
 
 

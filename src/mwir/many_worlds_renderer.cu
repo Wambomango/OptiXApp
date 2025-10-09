@@ -48,7 +48,7 @@ torch::Tensor ManyWorldsRenderer::Backward(Scene &scene, ManyWorlds &many_worlds
     CUDA_CHECK(cudaStreamSynchronize(stream));
 
     SPDLOG_INFO("Finished rendering");
-    return occupancy_gradient;
+    return occupancy_gradient.to(many_worlds.GetOccupancy().device());
 }
 
 torch::Tensor ManyWorldsRenderer::PrepareForward(Scene &scene, ManyWorlds &many_worlds, std::optional<torch::Tensor> opt_result_tensor, std::optional<int> seed)

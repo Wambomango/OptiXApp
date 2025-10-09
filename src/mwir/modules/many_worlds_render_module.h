@@ -27,15 +27,15 @@ static __forceinline__ __device__ void SampleManyWorlds(const float3 &normalized
                                 continuous_idx.y - lower_idx.y,
                                 continuous_idx.z - lower_idx.z);
 
-    float *occ = params.many_worlds.occupancy;
-    float o000 = occ[LinearizeIndex(lower_idx.x, lower_idx.y, lower_idx.z, params.many_worlds.shape)];
-    float o001 = occ[LinearizeIndex(lower_idx.x, lower_idx.y, upper_idx.z, params.many_worlds.shape)];
-    float o010 = occ[LinearizeIndex(lower_idx.x, upper_idx.y, lower_idx.z, params.many_worlds.shape)];
-    float o011 = occ[LinearizeIndex(lower_idx.x, upper_idx.y, upper_idx.z, params.many_worlds.shape)];
-    float o100 = occ[LinearizeIndex(upper_idx.x, lower_idx.y, lower_idx.z, params.many_worlds.shape)];
-    float o101 = occ[LinearizeIndex(upper_idx.x, lower_idx.y, upper_idx.z, params.many_worlds.shape)];
-    float o110 = occ[LinearizeIndex(upper_idx.x, upper_idx.y, lower_idx.z, params.many_worlds.shape)];
-    float o111 = occ[LinearizeIndex(upper_idx.x, upper_idx.y, upper_idx.z, params.many_worlds.shape)];
+    unsigned char *occ = params.many_worlds.quantized_occupancy;
+    float o000 = occ[LinearizeIndex(lower_idx.x, lower_idx.y, lower_idx.z, params.many_worlds.shape)] / 255.0f;
+    float o001 = occ[LinearizeIndex(lower_idx.x, lower_idx.y, upper_idx.z, params.many_worlds.shape)] / 255.0f;
+    float o010 = occ[LinearizeIndex(lower_idx.x, upper_idx.y, lower_idx.z, params.many_worlds.shape)] / 255.0f;
+    float o011 = occ[LinearizeIndex(lower_idx.x, upper_idx.y, upper_idx.z, params.many_worlds.shape)] / 255.0f;
+    float o100 = occ[LinearizeIndex(upper_idx.x, lower_idx.y, lower_idx.z, params.many_worlds.shape)] / 255.0f;
+    float o101 = occ[LinearizeIndex(upper_idx.x, lower_idx.y, upper_idx.z, params.many_worlds.shape)] / 255.0f;
+    float o110 = occ[LinearizeIndex(upper_idx.x, upper_idx.y, lower_idx.z, params.many_worlds.shape)] / 255.0f;
+    float o111 = occ[LinearizeIndex(upper_idx.x, upper_idx.y, upper_idx.z, params.many_worlds.shape)] / 255.0f;
 
     float o00 = o000 * (1 - deltas.x) + o100 * deltas.x;
     float o01 = o001 * (1 - deltas.x) + o101 * deltas.x;

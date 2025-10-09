@@ -44,7 +44,7 @@ class Camera
         glm::mat4 view_matrix = glm::mat4(1.0f);
         glm::mat4 projection_matrix = glm::mat4(1.0f);
 
-
+        bool capture_mouse = false;
         bool moving_forward = false;
         bool moving_backward = false;
         bool moving_left = false;

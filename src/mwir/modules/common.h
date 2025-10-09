@@ -52,7 +52,7 @@ struct alignas(16) ManyWorldsParams
 
     complex3 *e_field_gradient;
 
-    float *occupancy;
+    unsigned char *quantized_occupancy;
     float *occupancy_gradient;
 
     complex3 *reference;
